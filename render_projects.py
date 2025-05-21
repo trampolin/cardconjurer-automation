@@ -4,6 +4,7 @@ from playwright.async_api import async_playwright
 import json
 import sys
 import logging
+import argparse
 
 logging.basicConfig(
     level=logging.INFO,
@@ -12,12 +13,13 @@ logging.basicConfig(
 )
 
 class CardConjurerAutomation:
-    def __init__(self, project_dir: Path):
+    def __init__(self, project_dir: Path, card_names=None):
         self.project_dir = project_dir
         self.input_dir = project_dir / "input"
         self.output_dir = project_dir / "output"
         self.output_dir.mkdir(exist_ok=True)
         self.browser = None
+        self.card_names = set(card_names) if card_names else None
 
     async def run(self):
         async with async_playwright() as p:
@@ -33,6 +35,8 @@ class CardConjurerAutomation:
         json_files = sorted(self.input_dir.glob("*.json"))
         for json_file in json_files:
             base_name = json_file.stem
+            if self.card_names and base_name not in self.card_names:
+                continue
             artwork_file = self.input_dir / f"{base_name}.png"
             output_file = self.output_dir / f"{base_name}.png"
 
@@ -82,7 +86,7 @@ class CardConjurerAutomation:
         await page.fill('#import-name', card_data['name'])
         await page.wait_for_timeout(200)
         await page.keyboard.press('Tab')
-        await page.wait_for_timeout(200)
+        await page.wait_for_timeout(1000)
         card_version = f"{card_data['name']} ({card_data['set'].upper()} #{card_data['collector_number']})"
         options = await page.query_selector_all('#import-index option')
         value_to_select = None
@@ -93,7 +97,7 @@ class CardConjurerAutomation:
                 break
         if value_to_select is not None:
             await page.select_option('#import-index', value=value_to_select)
-            await page.wait_for_timeout(500)
+            await page.wait_for_timeout(2000)
         else:
             logging.warning(f"No matching card version found: {card_version}")
 
@@ -142,16 +146,19 @@ class CardConjurerAutomation:
                 await page.wait_for_timeout(200)
 
 def main():
-    if len(sys.argv) < 2:
-        logging.error("Please provide the project folder as a command-line argument.")
-        return
+    parser = argparse.ArgumentParser()
+    parser.add_argument("project_dir", help="Path to the project folder")
+    parser.add_argument("--cards", help="Comma-separated list of card base names to process", default=None)
+    args = parser.parse_args()
 
-    project_dir = Path(sys.argv[1])
+    project_dir = Path(args.project_dir)
     if not project_dir.exists() or not project_dir.is_dir():
         logging.error(f"Project folder '{project_dir}' not found or is not a directory.")
         return
 
-    automation = CardConjurerAutomation(project_dir)
+    card_names = [name.strip() for name in args.cards.split(",")] if args.cards else None
+
+    automation = CardConjurerAutomation(project_dir, card_names)
     asyncio.run(automation.run())
 
 if __name__ == "__main__":
