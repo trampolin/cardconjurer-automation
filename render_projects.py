@@ -114,17 +114,25 @@ async def add_margin(page):
 
 
 async def change_artwork(artwork_path, page):
-    # --- NEU: Artwork ändern ---
-    # Zum "Art"-Tab wechseln
+    # --- Artwork ändern ---
     await page.click('h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="art"]')
     await page.wait_for_timeout(500)
-    # Das passende File-Input finden und Artwork hochladen
     art_input = await page.query_selector('input[type="file"][accept*=".png"][data-dropfunction="uploadArt"]')
     if art_input:
         await art_input.set_input_files(str(artwork_path))
         await page.wait_for_timeout(1500)
     else:
         logging.warning("⚠️ Artwork-Input nicht gefunden, Bild nicht geändert.")
+
+    # --- Set Symbol entfernen ---
+    await page.click('h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="setSymbol"]')
+    await page.wait_for_timeout(500)
+    remove_btn = await page.query_selector('button.input.margin-bottom[onclick*="uploadSetSymbol(blank.src);"]')
+    if remove_btn:
+        await remove_btn.click()
+        await page.wait_for_timeout(500)
+    else:
+        logging.warning("⚠️ Remove Set Symbol Button nicht gefunden.")
 
 
 async def load_card_frame(frame_file_input, frame_path, page):
