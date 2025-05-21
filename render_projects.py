@@ -14,7 +14,7 @@ logging.basicConfig(
 SCRIPT_DIR = Path(__file__).parent.resolve()
 BASE_DIR = SCRIPT_DIR / "projects"
 
-async def render_card(json_path: Path, artwork_path: Path, output_path: Path, browser, frame_path: Path):
+async def render_card(json_path: Path, artwork_path: Path, output_path: Path, browser):
     with open(json_path, encoding="utf-8") as f:
         card_data = json.load(f)
 
@@ -31,29 +31,10 @@ async def render_card(json_path: Path, artwork_path: Path, output_path: Path, br
     await page.goto("https://cardconjurer.app/", wait_until="networkidle")
     await page.wait_for_selector("text=Import/Save", timeout=15000)
 
+
+
     try:
-        # Import frame file
-        await page.click("text=Import/Save")
-        await page.wait_for_timeout(500)
-        # Suche gezielt das Input-Element für .cardconjurer/.txt
-        frame_file_input = await page.query_selector('input[type="file"][accept=".cardconjurer,.txt"]')
-        if not frame_file_input:
-            logging.error("❌ Spezifisches Frame file input nicht gefunden.")
-            return
-
-        if not frame_path.exists():
-            logging.error(f"❌ Frame file not found: {frame_path}")
-            return
-
-        #await load_card_frame(frame_file_input, frame_path, page)
-
-        # Danach 'Seventh Edition' im autoFrame-Dropdown auswählen
-        await page.select_option('#autoFrame', value='Seventh')
-        await page.wait_for_timeout(500)
-
-        await check_import_all_prints(page)
-
-        await load_card(card_data, page)
+        await import_card(card_data, page)
 
         await add_margin(page)
 
@@ -65,6 +46,16 @@ async def render_card(json_path: Path, artwork_path: Path, output_path: Path, br
     finally:
         await page.close()
         temp_json.unlink()
+
+
+async def import_card(card_data, page):
+    # Tab "Import/Save" öffnen
+    await page.click('h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="import"]')
+    await page.wait_for_timeout(300)
+    await page.select_option('#autoFrame', value='Seventh')
+    await page.wait_for_timeout(500)
+    await check_import_all_prints(page)
+    await load_card(card_data, page)
 
 
 async def load_card(card_data, page):
@@ -104,13 +95,13 @@ async def download_card(output_path, page):
 async def add_margin(page):
     # Nach Import: 'Frame'-Tab aktivieren
     await page.click('h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="frame"]')
-    await page.wait_for_timeout(1000)
+    await page.wait_for_timeout(300)
     # Im Dropdown #selectFrameGroup die Option mit value 'margin' auswählen
     await page.select_option('#selectFrameGroup', value='Margin')
-    await page.wait_for_timeout(1000)
+    await page.wait_for_timeout(300)
     # Button 'Add Frame to Card' klicken
     await page.click('#addToFull')
-    await page.wait_for_timeout(1000)
+    await page.wait_for_timeout(300)
 
 
 async def change_artwork(artwork_path, page):
@@ -135,16 +126,6 @@ async def change_artwork(artwork_path, page):
         logging.warning("⚠️ Remove Set Symbol Button nicht gefunden.")
 
 
-async def load_card_frame(frame_file_input, frame_path, page):
-    await frame_file_input.set_input_files(str(frame_path))
-    await page.wait_for_timeout(1000)
-    logging.info(f"🖼️ Frame import versucht: {frame_path}")
-    # Nach dem Import: Auswahl im Dropdown setzen
-    await page.select_option('#load-card-options', label='red_frame')
-    await page.wait_for_timeout(1000)
-    logging.info("✅ Frame import erfolgreich.")
-
-
 async def check_import_all_prints(page):
     # Checkbox 'importAllPrints' aktivieren, falls nicht bereits aktiviert
     checkbox = await page.query_selector('#importAllPrints')
@@ -165,14 +146,6 @@ async def process_project(project_dir: Path, browser):
     output_dir = project_dir / "output"
     output_dir.mkdir(exist_ok=True)
 
-    frames_dir = project_dir / "frames"
-    # Passe ggf. den Frame-Dateinamen an, falls er variabel ist
-    frame_files = list(frames_dir.glob("*.cardconjurer"))
-    if not frame_files:
-        logging.warning(f"⚠️ No frame file found in: {frames_dir}")
-        return
-    frame_path = frame_files[0]
-
     json_files = sorted(input_dir.glob("*.json"))
     for json_file in json_files:
         base_name = json_file.stem
@@ -183,7 +156,7 @@ async def process_project(project_dir: Path, browser):
             logging.warning(f"⚠️ No artwork for: {base_name}")
             continue
 
-        await render_card(json_file, artwork_file, output_file, browser, frame_path)
+        await render_card(json_file, artwork_file, output_file, browser)
 
 
 async def main():
