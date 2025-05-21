@@ -1,0 +1,6 @@
+playwright>=1.43
+# Die folgenden Pakete sind Standard in Python 3.7+, aber zur Klarstellung:
+asyncio
+pathlib
+# Optional, falls HTTP-Anfragen benötigt werden:
+requests
