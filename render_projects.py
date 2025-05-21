@@ -5,6 +5,7 @@ import json
 import sys
 import logging
 import argparse
+import csv
 
 logging.basicConfig(
     level=logging.INFO,
@@ -13,10 +14,10 @@ logging.basicConfig(
 )
 
 class CardConjurerAutomation:
-    def __init__(self, project_dir: Path, card_names=None):
-        self.project_dir = project_dir
-        self.input_dir = project_dir / "input"
-        self.output_dir = project_dir / "output"
+    def __init__(self, csv_path: Path, input_dir: Path, output_dir: Path, card_names=None):
+        self.csv_path = csv_path
+        self.input_dir = input_dir
+        self.output_dir = output_dir
         self.output_dir.mkdir(exist_ok=True)
         self.browser = None
         self.card_names = set(card_names) if card_names else None
@@ -27,36 +28,46 @@ class CardConjurerAutomation:
                 headless=False,
                 #args=["--start-maximized"]
             )
-            logging.info(f"Processing project: {self.project_dir}")
-            await self.process_project()
+            logging.info(f"Processing cards from: {self.csv_path}")
+            await self.process_csv()
             await self.browser.close()
 
-    async def process_project(self):
-        json_files = sorted(self.input_dir.glob("*.json"))
-        for json_file in json_files:
-            base_name = json_file.stem
-            if self.card_names and base_name not in self.card_names:
-                continue
-            artwork_file = self.input_dir / f"{base_name}.png"
-            output_file = self.output_dir / f"{base_name}.png"
+    async def process_csv(self):
+        with open(self.csv_path, newline='', encoding='utf-8') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                if len(row) < 4:
+                    logging.warning(f"Skipping invalid row: {row}")
+                    continue
+                count, card_name, set_code, collector_number = row
+                count = int(count) if count.isdigit() else 1
 
-            if not artwork_file.exists():
-                logging.warning(f"No artwork for: {base_name}")
-                continue
+                # Only process if card_name is in the filter (if set)
+                if self.card_names and card_name not in self.card_names:
+                    continue
 
-            await self.render_card(json_file, artwork_file, output_file)
+                artwork_file = self.input_dir / f"{card_name}_{set_code}_{collector_number}.png"
+                if not artwork_file.exists():
+                    logging.warning(f"No artwork for: {card_name}_{set_code}_{collector_number}, using default image.")
+                    artwork_file = None
 
-    async def render_card(self, json_path: Path, artwork_path: Path, output_path: Path):
-        with open(json_path, encoding="utf-8") as f:
-            card_data = json.load(f)
+                card_data = {
+                    "name": card_name,
+                    "set": set_code,
+                    "collector_number": collector_number
+                }
 
-        logging.info(f"Processing card: {card_data['name']}")
+                # Replace spaces with underscores in output file name
+                safe_card_name = card_name.replace(" ", "_")
+                safe_set_code = set_code.replace(" ", "_")
+                safe_collector_number = collector_number.replace(" ", "_")
 
-        card_data["art"] = str(artwork_path.resolve())
+                for i in range(count):
+                    output_file = self.output_dir / f"{safe_card_name}_{safe_set_code}_{safe_collector_number}_{i+1:04}.png"
+                    await self.render_card(card_data, artwork_file, output_file)
 
-        temp_json = json_path.parent / (json_path.stem + "_temp.json")
-        with open(temp_json, "w", encoding="utf-8") as f:
-            json.dump(card_data, f, indent=2)
+    async def render_card(self, card_data, artwork_path, output_path):
+        logging.info(f"Processing card: {card_data['name']} ({card_data['set']} #{card_data['collector_number']})")
 
         page = await self.browser.new_page()
         await page.set_viewport_size({"width": 1920, "height": 1080})
@@ -66,13 +77,13 @@ class CardConjurerAutomation:
         try:
             await self.import_card(card_data, page)
             await self.add_margin(page)
-            await self.change_artwork(artwork_path, page)
+            if artwork_path:
+                await self.change_artwork(artwork_path, page)
             await self.remove_set_symbol(page)
             await self.download_card(output_path, page)
             await page.wait_for_timeout(1000)
         finally:
             await page.close()
-            temp_json.unlink()
 
     async def import_card(self, card_data, page):
         await page.click('h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="import"]')
@@ -147,18 +158,22 @@ class CardConjurerAutomation:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("project_dir", help="Path to the project folder")
-    parser.add_argument("--cards", help="Comma-separated list of card base names to process", default=None)
+    parser.add_argument("csv_file", help="Path to the CSV file")
+    parser.add_argument("--artworks", help="Input folder for artwork images", default="input")
+    parser.add_argument("--output", help="Output folder for generated cards", default="output")
+    parser.add_argument("--cards", help="Comma-separated list of card names to process", default=None)
     args = parser.parse_args()
 
-    project_dir = Path(args.project_dir)
-    if not project_dir.exists() or not project_dir.is_dir():
-        logging.error(f"Project folder '{project_dir}' not found or is not a directory.")
-        return
-
+    csv_path = Path(args.csv_file)
+    input_dir = Path(args.artworks)
+    output_dir = Path(args.output)
     card_names = [name.strip() for name in args.cards.split(",")] if args.cards else None
 
-    automation = CardConjurerAutomation(project_dir, card_names)
+    if not csv_path.exists() or not csv_path.is_file():
+        logging.error(f"CSV file '{csv_path}' not found or is not a file.")
+        return
+
+    automation = CardConjurerAutomation(csv_path, input_dir, output_dir, card_names)
     asyncio.run(automation.run())
 
 if __name__ == "__main__":
