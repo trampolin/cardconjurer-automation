@@ -6,6 +6,8 @@ import sys
 import logging
 import argparse
 import csv
+import xml.etree.ElementTree as ET
+import uuid
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,15 +16,21 @@ logging.basicConfig(
 )
 
 class CardConjurerAutomation:
-    def __init__(self, csv_path: Path, input_dir: Path, output_dir: Path, card_names=None):
+    def __init__(self, csv_path: Path, input_dir: Path, output_dir: Path, card_names=None, skip_images=False):
         self.csv_path = csv_path
         self.input_dir = input_dir
         self.output_dir = output_dir
         self.output_dir.mkdir(exist_ok=True)
         self.browser = None
         self.card_names = set(card_names) if card_names else None
+        self.generated_cards = []
+        self.skip_images = skip_images
 
     async def run(self):
+        if self.skip_images:
+            logging.info("Skipping image generation, only writing XML.")
+            await self.process_csv(skip_images=True)
+            return
         async with async_playwright() as p:
             self.browser = await p.chromium.launch(
                 headless=False,
@@ -32,7 +40,7 @@ class CardConjurerAutomation:
             await self.process_csv()
             await self.browser.close()
 
-    async def process_csv(self):
+    async def process_csv(self, skip_images=False):
         with open(self.csv_path, newline='', encoding='utf-8') as csvfile:
             reader = csv.reader(csvfile)
             for row in reader:
@@ -64,7 +72,13 @@ class CardConjurerAutomation:
 
                 for i in range(count):
                     output_file = self.output_dir / f"{safe_card_name}_{safe_set_code}_{safe_collector_number}_{i+1:04}.png"
-                    await self.render_card(card_data, artwork_file, output_file)
+                    if not skip_images:
+                        await self.render_card(card_data, artwork_file, output_file)
+                    # Track generated card for XML
+                    self.generated_cards.append({
+                        "name": output_file.name,
+                        "query": card_name.lower()
+                    })
 
     async def render_card(self, card_data, artwork_path, output_path):
         logging.info(f"Processing card: {card_data['name']} ({card_data['set']} #{card_data['collector_number']})")
@@ -156,12 +170,46 @@ class CardConjurerAutomation:
                 await parent.click()
                 await page.wait_for_timeout(200)
 
+    def get_bracket(self, quantity):
+        brackets = [
+            18, 36, 55, 72, 90, 108, 126, 144, 162, 180, 198, 216, 234, 396, 504, 612
+        ]
+        for b in brackets:
+            if quantity <= b:
+                return b
+        return brackets[-1]
+
+    def write_mpc_xml(self, xml_path):
+        order = ET.Element("order")
+        details = ET.SubElement(order, "details")
+        quantity = len(self.generated_cards)
+        bracket = self.get_bracket(quantity)
+        ET.SubElement(details, "quantity").text = str(quantity)
+        ET.SubElement(details, "bracket").text = str(bracket)
+        ET.SubElement(details, "stock").text = "(S30) Standard Smooth"
+        ET.SubElement(details, "foil").text = "false"
+
+        fronts = ET.SubElement(order, "fronts")
+        for idx, card in enumerate(self.generated_cards):
+            card_elem = ET.SubElement(fronts, "card")
+            ET.SubElement(card_elem, "id").text = str(uuid.uuid4())
+            ET.SubElement(card_elem, "slots").text = str(idx)
+            ET.SubElement(card_elem, "name").text = card["name"]
+            ET.SubElement(card_elem, "query").text = card["query"]
+
+        ET.SubElement(order, "backs")
+        ET.SubElement(order, "cardback")
+
+        tree = ET.ElementTree(order)
+        tree.write(xml_path, encoding="utf-8", xml_declaration=True)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("csv_file", help="Path to the CSV file")
     parser.add_argument("--artworks", help="Input folder for artwork images", default="input")
     parser.add_argument("--output", help="Output folder for generated cards", default="output")
     parser.add_argument("--cards", help="Comma-separated list of card names to process", default=None)
+    parser.add_argument("--skip-images", action="store_true", help="Only write the XML file, do not generate images")
     args = parser.parse_args()
 
     csv_path = Path(args.csv_file)
@@ -173,8 +221,12 @@ def main():
         logging.error(f"CSV file '{csv_path}' not found or is not a file.")
         return
 
-    automation = CardConjurerAutomation(csv_path, input_dir, output_dir, card_names)
+    automation = CardConjurerAutomation(csv_path, input_dir, output_dir, card_names, skip_images=args.skip_images)
     asyncio.run(automation.run())
+    # Write XML after processing, use the same name as the csv file with .xml
+    xml_path = output_dir / (csv_path.stem + ".xml")
+    automation.write_mpc_xml(xml_path)
+    logging.info(f"XML file written to: {xml_path}")
 
 if __name__ == "__main__":
     main()
