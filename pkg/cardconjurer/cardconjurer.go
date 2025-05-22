@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"sync"
+	"time"
 )
 
 type CardConjurer struct {
@@ -112,6 +113,14 @@ func (cc *CardConjurer) startWorker(id int, ctx context.Context, wg *sync.WaitGr
 				log.Printf("Worker %d: Fehler beim Ersetzen des Artwork für Karte '%s': %v", id, card.GetFullName(), err)
 				continue
 			}
+
+			err = cc.removeSetSymbol(browserCtx)
+			if err != nil {
+				log.Printf("Worker %d: Fehler beim Entfernen des Set-Symbols für Karte '%s': %v", id, card.GetFullName(), err)
+				continue
+			}
+
+			time.Sleep(time.Second * 10)
 
 			log.Printf("Worker %d: Karte '%s' fertig verarbeitet.", id, card.GetFullName())
 		}

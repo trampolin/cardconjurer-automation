@@ -306,6 +306,25 @@ func (cc *CardConjurer) replaceArtwork(card CardInfo, browserCtx context.Context
 	return nil
 }
 
+func (cc *CardConjurer) removeSetSymbol(browserCtx context.Context) error {
+	//buttonSelector := `button.input.margin-bottom[onclick*="removeSetSymbol()"]`
+	buttonSelector := `#creator-menu-setSymbol > div:nth-child(3) > button`
+
+	err := cc.openTab(browserCtx, "setSymbol", buttonSelector)
+	if err != nil {
+		return err
+	}
+
+	// Klicke auf den Button, um das Set-Symbol zu entfernen
+	if err := chromedp.Run(browserCtx,
+		chromedp.Click(buttonSelector),
+	); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // openTab öffnet ein Tab anhand des Tab-Namens (z.B. "import", "frame").
 // Es kann auf beliebig viele Selektoren nach dem Klick gewartet werden.
 func (cc *CardConjurer) openTab(ctx context.Context, tabName string, waitForSelectors ...string) error {
