@@ -9,10 +9,10 @@ import (
 	"time"
 )
 
-func (cc *CardConjurer) importCard(cardData CardInfo, browserCtx context.Context) error {
+func (w *worker) importCard(cardData CardInfo, browserCtx context.Context) error {
 	log.Printf("Starte Import für Karte: %s", cardData.GetFullName())
 
-	err := cc.openTab(browserCtx, "import", "#import-name")
+	err := w.openTab(browserCtx, "import", "#import-name")
 	if err != nil {
 		return err
 	}
@@ -37,18 +37,18 @@ func (cc *CardConjurer) importCard(cardData CardInfo, browserCtx context.Context
 
 	// Weitere Aktionen: check_import_all_prints und load_card
 	log.Println("Überprüfe Checkbox 'Import All Prints' und lade Karte...")
-	if err := cc.checkImportAllPrints(browserCtx); err != nil {
+	if err := w.checkImportAllPrints(browserCtx); err != nil {
 		return err
 	}
 	log.Println("Lade Karte...")
-	if err := cc.loadCard(cardData, browserCtx); err != nil {
+	if err := w.loadCard(cardData, browserCtx); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (cc *CardConjurer) checkImportAllPrints(browserCtx context.Context) error {
+func (w *worker) checkImportAllPrints(browserCtx context.Context) error {
 	var checked bool
 	// Prüfe, ob die Checkbox gecheckt ist
 	err := chromedp.Run(browserCtx,
@@ -70,7 +70,7 @@ func (cc *CardConjurer) checkImportAllPrints(browserCtx context.Context) error {
 	return nil
 }
 
-func (cc *CardConjurer) loadCard(cardData CardInfo, browserCtx context.Context) error {
+func (w *worker) loadCard(cardData CardInfo, browserCtx context.Context) error {
 	// Vor dem Eintragen des Namens: Alle Optionen aus dem Dropdown entfernen
 	log.Println("Lösche alle Optionen aus #import-index vor neuer Suche...")
 	if err := chromedp.Run(browserCtx,

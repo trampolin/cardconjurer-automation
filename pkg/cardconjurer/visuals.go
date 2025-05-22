@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (cc *CardConjurer) addMargin(browserCtx context.Context) error {
+func (w *worker) addMargin(browserCtx context.Context) error {
 	// Klick auf das Frame-Tab und warte, bis das Dropdown sichtbar ist
 	log.Println("Starte Margin-Import")
 	if err := chromedp.Run(browserCtx,
@@ -80,15 +80,15 @@ func (cc *CardConjurer) addMargin(browserCtx context.Context) error {
 	return nil
 }
 
-func (cc *CardConjurer) replaceArtwork(card CardInfo, browserCtx context.Context) error {
-	if cc.config.InputArtworkFolder == "" {
+func (w *worker) replaceArtwork(card CardInfo, browserCtx context.Context) error {
+	if w.config.InputArtworkFolder == "" {
 		//return nil
 	}
 
 	// Klick auf das Artwork-Tab und warte, bis das File-Input sichtbar ist
 	log.Println("Starte Artwork-Import")
 	inputSelector := `input[type="file"][accept*=".png"][data-dropfunction="uploadArt"]`
-	err := cc.openTab(
+	err := w.openTab(
 		browserCtx,
 		"art",
 		inputSelector,
@@ -99,7 +99,7 @@ func (cc *CardConjurer) replaceArtwork(card CardInfo, browserCtx context.Context
 
 	// Prüfe, ob eine passende PNG-Datei im Artwork-Ordner existiert
 	filename := fmt.Sprintf("%s.png", card.GetName())
-	filepath := fmt.Sprintf("%s/%s", cc.config.InputArtworkFolder, filename)
+	filepath := fmt.Sprintf("%s/%s", w.config.InputArtworkFolder, filename)
 	if _, err := os.Stat(filepath); err != nil {
 		if os.IsNotExist(err) {
 			log.Printf("Artwork-Datei nicht gefunden: %s", filepath)
@@ -122,11 +122,11 @@ func (cc *CardConjurer) replaceArtwork(card CardInfo, browserCtx context.Context
 	return nil
 }
 
-func (cc *CardConjurer) removeSetSymbol(browserCtx context.Context) error {
+func (w *worker) removeSetSymbol(browserCtx context.Context) error {
 	//buttonSelector := `button.input.margin-bottom[onclick*="removeSetSymbol()"]`
 	buttonSelector := `#creator-menu-setSymbol > div:nth-child(3) > button`
 
-	err := cc.openTab(browserCtx, "setSymbol", buttonSelector)
+	err := w.openTab(browserCtx, "setSymbol", buttonSelector)
 	if err != nil {
 		return err
 	}

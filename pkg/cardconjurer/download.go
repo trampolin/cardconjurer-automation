@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func (cc *CardConjurer) saveCard(card CardInfo, browserCtx context.Context) error {
+func (w *worker) saveCard(card CardInfo, browserCtx context.Context) error {
 	log.Println("Speichere Karte...")
 
 	homeDir, err := os.UserHomeDir()
@@ -25,7 +25,7 @@ func (cc *CardConjurer) saveCard(card CardInfo, browserCtx context.Context) erro
 	downloadPath := path.Join(homeDir, "Downloads", filename)
 	altFilename := strings.ReplaceAll(filename, "'", "’")
 	altDownloadPath := path.Join(homeDir, "Downloads", altFilename)
-	targetPath := path.Join(cc.config.OutputCardsFolder, fmt.Sprintf("%s_%s.png", cc.config.ProjectName, card.GetSanitizedName()))
+	targetPath := path.Join(w.config.OutputCardsFolder, fmt.Sprintf("%s_%s.png", w.config.ProjectName, card.GetSanitizedName()))
 
 	// Vor dem Download: Lösche ggf. existierende Datei im Download-Ordner (beide Varianten)
 	if _, err := os.Stat(downloadPath); err == nil {

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (cc *CardConjurer) openBrowser(parentCtx context.Context) (context.Context, error) {
+func (w *worker) openBrowser(parentCtx context.Context) (context.Context, error) {
 	log.Println("Starte neuen Browser...")
 	dir, err := os.MkdirTemp("", "chromedp-example")
 	if err != nil {
@@ -19,7 +19,7 @@ func (cc *CardConjurer) openBrowser(parentCtx context.Context) (context.Context,
 	// os.RemoveAll(dir) sollte vom Aufrufer übernommen werden
 
 	// Setze den Download-Ordner explizit auf das gewünschte OutputCardsFolder
-	downloadDir := cc.config.OutputCardsFolder
+	downloadDir := w.config.OutputCardsFolder
 	if downloadDir == "" {
 		downloadDir = dir // Fallback
 	}
@@ -40,9 +40,9 @@ func (cc *CardConjurer) openBrowser(parentCtx context.Context) (context.Context,
 	taskCtx, cancel2 := chromedp.NewContext(allocCtx, chromedp.WithLogf(log.Printf))
 	// cancel2 sollte vom Aufrufer übernommen werden
 
-	log.Printf("Opening browser at %s and sleep for two seconds", cc.config.BaseUrl)
+	log.Printf("Opening browser at %s and sleep for two seconds", w.config.BaseUrl)
 	if err := chromedp.Run(taskCtx,
-		chromedp.Navigate(cc.config.BaseUrl),
+		chromedp.Navigate(w.config.BaseUrl),
 		// Warte, bis das Dokument vollständig geladen ist
 		chromedp.WaitReady("body"),
 		chromedp.Sleep(2*time.Second),
@@ -55,7 +55,7 @@ func (cc *CardConjurer) openBrowser(parentCtx context.Context) (context.Context,
 	return taskCtx, nil
 }
 
-func (cc *CardConjurer) closeBrowser(browserCtx context.Context) {
+func (w *worker) closeBrowser(browserCtx context.Context) {
 	log.Println("Schließe Browser...")
 	if err := chromedp.Cancel(browserCtx); err != nil {
 		log.Printf("Error closing browser: %v", err)
@@ -65,7 +65,7 @@ func (cc *CardConjurer) closeBrowser(browserCtx context.Context) {
 
 // openTab öffnet ein Tab anhand des Tab-Namens (z.B. "import", "frame").
 // Es kann auf beliebig viele Selektoren nach dem Klick gewartet werden.
-func (cc *CardConjurer) openTab(ctx context.Context, tabName string, waitForSelectors ...string) error {
+func (w *worker) openTab(ctx context.Context, tabName string, waitForSelectors ...string) error {
 	selector := fmt.Sprintf(`h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="%s"]`, tabName)
 	log.Printf("Öffne Tab: %s", tabName)
 	actions := []chromedp.Action{
