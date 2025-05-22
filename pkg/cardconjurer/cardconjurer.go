@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log"
 	"sync"
-	"time"
 )
 
 type CardConjurer struct {
@@ -108,8 +107,13 @@ func (cc *CardConjurer) startWorker(id int, ctx context.Context, wg *sync.WaitGr
 				continue
 			}
 
+			err = cc.replaceArtwork(card, browserCtx)
+			if err != nil {
+				log.Printf("Worker %d: Fehler beim Ersetzen des Artwork für Karte '%s': %v", id, card.GetFullName(), err)
+				continue
+			}
+
 			log.Printf("Worker %d: Karte '%s' fertig verarbeitet.", id, card.GetFullName())
-			time.Sleep(time.Millisecond * 50000)
 		}
 	}
 }
