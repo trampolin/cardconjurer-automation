@@ -120,6 +120,12 @@ func (cc *CardConjurer) startWorker(id int, ctx context.Context, wg *sync.WaitGr
 				continue
 			}
 
+			err = cc.saveCard(card, browserCtx)
+			if err != nil {
+				log.Printf("Worker %d: Fehler beim Speichern der Karte '%s': %v", id, card.GetFullName(), err)
+				continue
+			}
+
 			time.Sleep(time.Second * 10)
 
 			log.Printf("Worker %d: Karte '%s' fertig verarbeitet.", id, card.GetFullName())

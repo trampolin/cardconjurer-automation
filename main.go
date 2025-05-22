@@ -14,15 +14,42 @@ import (
 )
 
 func main() {
-	// Flags definieren
+	// Flags definieren (csvFile ist kein Flag mehr)
 	baseUrl := flag.String("base-url", "", "base url")
-	csvFile := flag.String("csv-file", "", "Pfad zur CSV-Datei")
-	output := flag.String("output", "output", "Pfad zum Ausgabeverzeichnis")
-	cards := flag.String("cards", "", "Kartenfilter (optional)")
+	output := flag.String("output", "", "Pfad zum Ausgabeverzeichnis der Karten")
+	input := flag.String("input", "", "Pfad zum Artwork-Verzeichnis")
+	cardsFilter := flag.String("cards-filter", "", "Kartenfilter (optional)")
 	skipImages := flag.Bool("skip-images", false, "Bilder überspringen")
 	flag.Parse()
 
-	dp, err := decklist_parser.New(*csvFile)
+	// csvFile als Pflicht-Parameter (erstes Argument nach den Flags)
+	if flag.NArg() < 1 {
+		log.Println("Fehler: Pfad zur CSV-Datei muss als Argument übergeben werden.")
+		log.Println("Aufruf: ./programm [flags] <csv-file>")
+		flag.Usage()
+		os.Exit(1)
+	}
+	csvFile := flag.Arg(0)
+
+	// Wenn input leer ist, setze auf <csvFile>/artworks
+	if *input == "" && csvFile != "" {
+		*input = filepath.Join(filepath.Dir(csvFile), "artworks")
+	}
+
+	// Wenn output leer ist, setze auf <csvFile>/cards
+	if *output == "" && csvFile != "" {
+		*output = filepath.Join(filepath.Dir(csvFile), "cards")
+	}
+
+	// Erstelle Artwork- und Cards-Ordner, falls sie nicht existieren
+	if err := os.MkdirAll(*input, 0755); err != nil {
+		log.Fatalf("Konnte Artwork-Ordner nicht erstellen: %v", err)
+	}
+	if err := os.MkdirAll(*output, 0755); err != nil {
+		log.Fatalf("Konnte Cards-Ordner nicht erstellen: %v", err)
+	}
+
+	dp, err := decklist_parser.New(csvFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -32,12 +59,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("card filter: %s", *cards)
+	log.Printf("card filter: %s", *cardsFilter)
 
 	var cardList []cardconjurer.CardInfo
 	for _, card := range decklist {
-		if *cards != "" {
-			if *cards != card.GetName() {
+		if *cardsFilter != "" {
+			if *cardsFilter != card.GetName() {
 				continue
 			}
 		}
@@ -45,8 +72,10 @@ func main() {
 	}
 
 	cfg := &cardconjurer.Config{
-		Workers: 1,
-		BaseUrl: *baseUrl,
+		Workers:            1,
+		BaseUrl:            *baseUrl,
+		InputArtworkFolder: *input,
+		OutputCardsFolder:  *output,
 	}
 	cc, err := cardconjurer.New(cfg, cardList)
 	if err != nil {
@@ -54,10 +83,6 @@ func main() {
 	}
 	ctx := context.Background()
 	cc.Run(ctx)
-
-	//for _, card := range decklist {
-	//	log.Println(card)
-	//}
 
 	return
 
@@ -114,8 +139,8 @@ func main() {
 	fmt.Printf("DevToolsActivePort has %d lines\n", len(lines))
 
 	// Beispiel: Ausgabe der Flag-Werte
-	fmt.Println("csv-file:", *csvFile)
+	fmt.Println("csv-file:", csvFile)
 	fmt.Println("output:", *output)
-	fmt.Println("cards:", *cards)
+	fmt.Println("cardsFilter:", *cardsFilter)
 	fmt.Println("skip-images:", *skipImages)
 }

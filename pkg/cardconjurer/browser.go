@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/chromedp/chromedp"
+	"io"
 	"log"
 	"os"
+	"path"
 	"strings"
 	"time"
 )
@@ -19,10 +21,20 @@ func (cc *CardConjurer) openBrowser(parentCtx context.Context) (context.Context,
 	}
 	// os.RemoveAll(dir) sollte vom Aufrufer übernommen werden
 
+	// Setze den Download-Ordner explizit auf das gewünschte OutputCardsFolder
+	downloadDir := cc.config.OutputCardsFolder
+	if downloadDir == "" {
+		downloadDir = dir // Fallback
+	}
+
+	log.Println("Download Dir:", downloadDir)
+
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.DisableGPU,
 		chromedp.UserDataDir(dir),
 		chromedp.Flag("headless", false),
+		chromedp.Flag("download.default_directory", downloadDir),
+		chromedp.Flag("download.prompt_for_download", false),
 	)
 
 	allocCtx, cancel := chromedp.NewExecAllocator(parentCtx, opts...)
@@ -30,12 +42,6 @@ func (cc *CardConjurer) openBrowser(parentCtx context.Context) (context.Context,
 
 	taskCtx, cancel2 := chromedp.NewContext(allocCtx, chromedp.WithLogf(log.Printf))
 	// cancel2 sollte vom Aufrufer übernommen werden
-
-	if err := chromedp.Run(taskCtx); err != nil {
-		cancel2()
-		cancel()
-		return nil, err
-	}
 
 	log.Printf("Opening browser at %s", cc.config.BaseUrl)
 	if err := chromedp.Run(taskCtx,
@@ -265,7 +271,7 @@ func (cc *CardConjurer) addMargin(browserCtx context.Context) error {
 }
 
 func (cc *CardConjurer) replaceArtwork(card CardInfo, browserCtx context.Context) error {
-	if cc.config.ArtworkFolder == "" {
+	if cc.config.InputArtworkFolder == "" {
 		//return nil
 	}
 
@@ -283,7 +289,7 @@ func (cc *CardConjurer) replaceArtwork(card CardInfo, browserCtx context.Context
 
 	// Prüfe, ob eine passende PNG-Datei im Artwork-Ordner existiert
 	filename := fmt.Sprintf("%s.png", card.GetName())
-	filepath := fmt.Sprintf("%s/%s", cc.config.ArtworkFolder, filename)
+	filepath := fmt.Sprintf("%s/%s", cc.config.InputArtworkFolder, filename)
 	if _, err := os.Stat(filepath); err != nil {
 		if os.IsNotExist(err) {
 			log.Printf("Artwork-Datei nicht gefunden: %s", filepath)
@@ -322,6 +328,82 @@ func (cc *CardConjurer) removeSetSymbol(browserCtx context.Context) error {
 		return err
 	}
 
+	return nil
+}
+
+func (cc *CardConjurer) saveCard(card CardInfo, browserCtx context.Context) error {
+	log.Println("Speichere Karte...")
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("konnte Home-Verzeichnis nicht bestimmen: %v", err)
+	}
+
+	// Erwarteter Dateiname
+	filename := fmt.Sprintf("%s.png", card.GetName())
+	downloadPath := path.Join(homeDir, "Downloads", filename)
+	targetPath := path.Join(cc.config.OutputCardsFolder, filename)
+
+	// Vor dem Download: Lösche ggf. existierende Datei im Download-Ordner
+	if _, err := os.Stat(downloadPath); err == nil {
+		log.Printf("Lösche existierende Datei im Download-Ordner: %s", downloadPath)
+		if err := os.Remove(downloadPath); err != nil {
+			return fmt.Errorf("Fehler beim Löschen der alten Download-Datei: %v", err)
+		}
+	}
+
+	// Klick auf Download-Button
+	if err := chromedp.Run(browserCtx,
+		chromedp.Click(`h3.download[onclick*="downloadCard"]`),
+	); err != nil {
+		return err
+	}
+
+	// Warte auf die Datei im Download-Ordner
+	timeout := time.After(20 * time.Second)
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	found := false
+	for !found {
+		select {
+		case <-timeout:
+			return fmt.Errorf("timeout beim Warten auf Download: %s", downloadPath)
+		case <-ticker.C:
+			if _, err := os.Stat(downloadPath); err == nil {
+				log.Printf("Karte gespeichert: %s", downloadPath)
+				found = true
+			}
+		}
+	}
+
+	// Datei ins Zielverzeichnis verschieben (überschreiben, falls vorhanden)
+	log.Printf("Verschiebe Datei nach: %s", targetPath)
+	err = os.Rename(downloadPath, targetPath)
+	if err != nil {
+		// Fallback: Kopieren und Löschen, falls Rename fehlschlägt (z.B. über Dateisystemgrenzen)
+		input, errOpen := os.Open(downloadPath)
+		if errOpen != nil {
+			return fmt.Errorf("Fehler beim Öffnen der Quelldatei: %v", errOpen)
+		}
+		defer input.Close()
+
+		output, errCreate := os.Create(targetPath)
+		if errCreate != nil {
+			return fmt.Errorf("Fehler beim Erstellen der Zieldatei: %v", errCreate)
+		}
+		defer output.Close()
+
+		if _, errCopy := io.Copy(output, input); errCopy != nil {
+			return fmt.Errorf("Fehler beim Kopieren der Datei: %v", errCopy)
+		}
+		input.Close()
+		output.Close()
+		if errRemove := os.Remove(downloadPath); errRemove != nil {
+			return fmt.Errorf("Fehler beim Entfernen der Quelldatei: %v", errRemove)
+		}
+	}
+	log.Printf("Datei erfolgreich verschoben: %s", targetPath)
 	return nil
 }
 
