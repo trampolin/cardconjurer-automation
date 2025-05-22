@@ -126,7 +126,7 @@ func (cc *CardConjurer) startWorker(id int, ctx context.Context, wg *sync.WaitGr
 				continue
 			}
 
-			time.Sleep(time.Second * 10)
+			time.Sleep(time.Millisecond * 250)
 
 			log.Printf("Worker %d: Karte '%s' fertig verarbeitet.", id, card.GetFullName())
 		}

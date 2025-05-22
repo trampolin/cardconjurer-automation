@@ -17,6 +17,7 @@ func main() {
 	output := flag.String("output", "", "Pfad zum Ausgabeverzeichnis der Karten")
 	input := flag.String("input", "", "Pfad zum Artwork-Verzeichnis")
 	cardsFilter := flag.String("cards-filter", "", "Kartenfilter (optional, kommasepariert)")
+	workers := flag.Int("workers", 2, "Anzahl der Worker")
 	//skipImages := flag.Bool("skip-images", false, "Bilder überspringen")
 	flag.Parse()
 
@@ -28,6 +29,19 @@ func main() {
 		os.Exit(1)
 	}
 	csvFile := flag.Arg(0)
+
+	// Projektname aus csvFile ableiten: Dateiname, lowercase, snake_case, keine Sonderzeichen, ohne .csv
+	projectName := strings.TrimSuffix(filepath.Base(csvFile), filepath.Ext(csvFile))
+	projectName = strings.ToLower(projectName)
+	projectName = strings.ReplaceAll(projectName, " ", "_")
+	// Entferne alle Zeichen außer Buchstaben, Zahlen und Unterstrich
+	var sanitized strings.Builder
+	for _, r := range projectName {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' {
+			sanitized.WriteRune(r)
+		}
+	}
+	projectName = sanitized.String()
 
 	// Wenn input leer ist, setze auf <csvFile>/artworks
 	if *input == "" && csvFile != "" {
@@ -77,10 +91,11 @@ func main() {
 	}
 
 	cfg := &cardconjurer.Config{
-		Workers:            1,
+		Workers:            *workers,
 		BaseUrl:            *baseUrl,
 		InputArtworkFolder: *input,
 		OutputCardsFolder:  *output,
+		ProjectName:        projectName,
 	}
 	cc, err := cardconjurer.New(cfg, cardList)
 	if err != nil {

@@ -20,6 +20,23 @@ func (c *Card) GetFullName() string {
 	return fmt.Sprintf("%s (%s #%s)", c.Name, strings.ToUpper(c.Set), c.CollectorNumber)
 }
 
+func (c *Card) GetSanitizedName() string {
+	// Alles in Kleinbuchstaben
+	name := strings.ToLower(c.Name)
+	// Ersetze Leerzeichen durch Unterstrich
+	name = strings.ReplaceAll(name, " ", "_")
+	// Ersetze typografisches Apostroph durch normales
+	name = strings.ReplaceAll(name, "’", "'")
+	// Entferne alle Zeichen, die keine Buchstaben, Zahlen oder Unterstriche sind
+	var sanitized strings.Builder
+	for _, r := range name {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' {
+			sanitized.WriteRune(r)
+		}
+	}
+	return sanitized.String()
+}
+
 func (c *Card) GetCount() int {
 	return c.Count
 }

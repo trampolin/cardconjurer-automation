@@ -5,4 +5,5 @@ type Config struct {
 	BaseUrl            string
 	InputArtworkFolder string
 	OutputCardsFolder  string
+	ProjectName        string
 }
