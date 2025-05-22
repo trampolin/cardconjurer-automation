@@ -7,12 +7,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/chromedp/chromedp"
 	"log"
 	"os"
 	"path/filepath"
-	"time"
-
-	"github.com/chromedp/chromedp"
 )
 
 func main() {
@@ -34,9 +32,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var cardList = make([]cardconjurer.CardInfo, len(decklist))
-	for i, card := range decklist {
-		cardList[i] = &card
+	log.Printf("card filter: %s", *cards)
+
+	var cardList []cardconjurer.CardInfo
+	for _, card := range decklist {
+		if *cards != "" {
+			if *cards != card.GetName() {
+				continue
+			}
+		}
+		cardList = append(cardList, &card)
 	}
 
 	cfg := &cardconjurer.Config{
@@ -47,7 +52,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ctx, _ := context.WithTimeout(context.Background(), time.Second*60)
+	ctx := context.Background()
 	cc.Run(ctx)
 
 	//for _, card := range decklist {

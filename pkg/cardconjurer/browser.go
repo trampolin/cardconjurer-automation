@@ -6,12 +6,15 @@ import (
 	"github.com/chromedp/chromedp"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
 func (cc *CardConjurer) openBrowser(parentCtx context.Context) (context.Context, error) {
+	log.Println("Starte neuen Browser...")
 	dir, err := os.MkdirTemp("", "chromedp-example")
 	if err != nil {
+		log.Printf("Fehler beim Erstellen des Temp-Verzeichnisses: %v", err)
 		return nil, err
 	}
 	// os.RemoveAll(dir) sollte vom Aufrufer übernommen werden
@@ -47,6 +50,7 @@ func (cc *CardConjurer) openBrowser(parentCtx context.Context) (context.Context,
 }
 
 func (cc *CardConjurer) closeBrowser(browserCtx context.Context) {
+	log.Println("Schließe Browser...")
 	if err := chromedp.Cancel(browserCtx); err != nil {
 		log.Printf("Error closing browser: %v", err)
 	}
@@ -54,28 +58,37 @@ func (cc *CardConjurer) closeBrowser(browserCtx context.Context) {
 }
 
 func (cc *CardConjurer) importCard(cardData CardInfo, browserCtx context.Context) error {
-	// Klick auf das Import-Tab
+	log.Printf("Starte Import für Karte: %s", cardData.GetFullName())
+
+	err := cc.openTab(browserCtx, "import", "#import-name")
+	if err != nil {
+		return err
+	}
+
+	// Klick auf das Import-Tab und warte, bis das Dropdown sichtbar ist
 	if err := chromedp.Run(browserCtx,
 		chromedp.Click(`h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="import"]`),
+		chromedp.WaitVisible(`#autoFrame`, chromedp.ByID),
 	); err != nil {
+		log.Printf("Fehler beim Öffnen des Import-Tabs: %v", err)
 		return err
 	}
 
-	time.Sleep(300 * time.Millisecond)
-
-	// Wähle Option 'Seventh' im Dropdown mit id 'autoFrame'
+	log.Println("Import-Tab geöffnet, wähle Option 'Seventh' im Dropdown.")
+	// Wähle Option 'Seventh' im Dropdown mit id 'autoFrame' und warte, bis die Checkbox bereit ist
 	if err := chromedp.Run(browserCtx,
 		chromedp.SetValue(`#autoFrame`, "Seventh"),
+		chromedp.WaitReady(`#importAllPrints`, chromedp.ByID),
 	); err != nil {
 		return err
 	}
 
-	time.Sleep(500 * time.Millisecond)
-
 	// Weitere Aktionen: check_import_all_prints und load_card
+	log.Println("Überprüfe Checkbox 'Import All Prints' und lade Karte...")
 	if err := cc.checkImportAllPrints(browserCtx); err != nil {
 		return err
 	}
+	log.Println("Lade Karte...")
 	if err := cc.loadCard(cardData, browserCtx); err != nil {
 		return err
 	}
@@ -93,39 +106,43 @@ func (cc *CardConjurer) checkImportAllPrints(browserCtx context.Context) error {
 		return err
 	}
 	if !checked {
-		// Klicke auf das Parent-Element der Checkbox
+		log.Println("Checkbox 'Import All Prints' ist nicht gecheckt, klicke darauf.")
+		// Klicke auf das Parent-Element der Checkbox und warte, bis die Checkbox wieder sichtbar ist
 		err = chromedp.Run(browserCtx,
 			chromedp.EvaluateAsDevTools(`document.querySelector('#importAllPrints').parentElement.click()`, nil),
 		)
 		if err != nil {
 			return err
 		}
-		time.Sleep(200 * time.Millisecond)
 	}
 	return nil
 }
 
 func (cc *CardConjurer) loadCard(cardData CardInfo, browserCtx context.Context) error {
-	// Name ins Importfeld eintragen
+	// Vor dem Eintragen des Namens: Alle Optionen aus dem Dropdown entfernen
+	log.Println("Lösche alle Optionen aus #import-index vor neuer Suche...")
 	if err := chromedp.Run(browserCtx,
-		chromedp.SetValue(`#import-name`, cardData.GetName(), chromedp.ByID),
+		chromedp.Evaluate(`document.querySelectorAll('#import-index option').forEach(o => o.remove())`, nil),
 	); err != nil {
-		return err
+		log.Printf("Konnte Optionen im Dropdown nicht löschen: %v", err)
+		// kein fataler Fehler, weitermachen
 	}
 
-	time.Sleep(200 * time.Millisecond)
-
-	// Tab drücken: Fokus setzen, dann Tab-Key als RawEvent senden
+	// Tab drücken: Fokus setzen, dann Tab-Key als RawEvent senden, danach warten bis das Dropdown bereit ist
 	if err := chromedp.Run(browserCtx,
+		chromedp.WaitVisible(`#import-name`, chromedp.ByID),
+		chromedp.WaitReady(`#import-name`, chromedp.ByID),
+		chromedp.SetValue(`#import-name`, cardData.GetName(), chromedp.ByID),
 		chromedp.Focus(`#import-name`, chromedp.ByID),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			return chromedp.SendKeys(`#import-name`, "\t", chromedp.ByID).Do(ctx)
 		}),
+		// Warte, bis mindestens eine Option im Dropdown geladen ist
+		chromedp.Poll(`document.querySelectorAll('#import-index option').length > 1`, nil, chromedp.WithPollingInterval(100*time.Millisecond)),
+		chromedp.WaitReady(`#import-index`, chromedp.ByID),
 	); err != nil {
 		return err
 	}
-
-	time.Sleep(1000 * time.Millisecond)
 
 	// Card-Version-String bauen
 	cardVersion := cardData.GetFullName()
@@ -134,13 +151,13 @@ func (cc *CardConjurer) loadCard(cardData CardInfo, browserCtx context.Context) 
 	var optionTexts []string
 	var optionValues []string
 	if err := chromedp.Run(browserCtx,
-		chromedp.Evaluate(`Array.from(document.querySelectorAll('#import-index option')).map(o => o.textContent)`, &optionTexts),
+		chromedp.Evaluate(`Array.from(document.querySelectorAll('#import-index option')).map(o => o.textContent.trim())`, &optionTexts),
 		chromedp.Evaluate(`Array.from(document.querySelectorAll('#import-index option')).map(o => o.value)`, &optionValues),
 	); err != nil {
 		return err
 	}
 
-	// Passende Option suchen
+	// Passende Option suchen (auch auf exakte Übereinstimmung nach Trim)
 	var valueToSelect string
 	for i, text := range optionTexts {
 		if text == cardVersion {
@@ -148,16 +165,25 @@ func (cc *CardConjurer) loadCard(cardData CardInfo, browserCtx context.Context) 
 			break
 		}
 	}
+	if valueToSelect == "" {
+		// Versuche es mit Whitespace-ignorierender Suche
+		for i, text := range optionTexts {
+			if strings.TrimSpace(text) == strings.TrimSpace(cardVersion) {
+				valueToSelect = optionValues[i]
+				break
+			}
+		}
+	}
 
 	if valueToSelect != "" {
-		// Option auswählen
+		// Option auswählen und warten, bis das Dropdown wieder bereit ist
 		if err := chromedp.Run(browserCtx,
 			chromedp.SetAttributeValue(fmt.Sprintf(`#import-index option[value="%s"]`, valueToSelect), "selected", "true"),
 			chromedp.SetValue(`#import-index`, valueToSelect),
+			chromedp.WaitReady(`#import-index`, chromedp.ByID),
 		); err != nil {
 			return err
 		}
-		time.Sleep(2000 * time.Millisecond)
 	} else {
 		log.Printf("Warnung: Keine passende Karten-Version gefunden: %s", cardVersion)
 	}
@@ -166,29 +192,55 @@ func (cc *CardConjurer) loadCard(cardData CardInfo, browserCtx context.Context) 
 }
 
 func (cc *CardConjurer) addMargin(browserCtx context.Context) error {
-	// Klick auf das Frame-Tab
+	// Klick auf das Frame-Tab und warte, bis das Dropdown sichtbar ist
+	log.Println("Starte Margin-Import")
 	if err := chromedp.Run(browserCtx,
 		chromedp.Click(`h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="frame"]`),
+		chromedp.WaitVisible(`#selectFrameGroup`, chromedp.ByID),
 	); err != nil {
 		return err
 	}
-	time.Sleep(300 * time.Millisecond)
 
-	// Wähle "Margin" im Dropdown mit id 'selectFrameGroup'
+	// Wähle "Margin" im Dropdown und warte, bis der Button bereit ist
+	log.Println("Wähle 'Margin' im Frame-Dropdown")
 	if err := chromedp.Run(browserCtx,
 		chromedp.SetValue(`#selectFrameGroup`, "Margin"),
+		chromedp.WaitReady(`#addToFull`, chromedp.ByID),
 	); err != nil {
 		return err
 	}
-	time.Sleep(300 * time.Millisecond)
 
-	// Klicke auf den Button mit id 'addToFull'
+	// Warte, bis das gewünschte Bild-Element geladen ist
+	log.Println("Warte auf das Margin-Bild-Element...")
+	if err := chromedp.Run(browserCtx,
+		chromedp.WaitReady(`img[src="/img/frames/margins/blackBorderExtensionThumb.png"]`),
+	); err != nil {
+		return err
+	}
+
+	// Klicke auf den Button
 	if err := chromedp.Run(browserCtx,
 		chromedp.Click(`#addToFull`),
 	); err != nil {
 		return err
 	}
-	time.Sleep(300 * time.Millisecond)
 
 	return nil
+}
+
+// openTab öffnet ein Tab anhand des Tab-Namens (z.B. "import", "frame").
+// Es kann auf beliebig viele Selektoren nach dem Klick gewartet werden.
+func (cc *CardConjurer) openTab(ctx context.Context, tabName string, waitForSelectors ...string) error {
+	selector := fmt.Sprintf(`h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="%s"]`, tabName)
+	log.Printf("Öffne Tab: %s", tabName)
+	actions := []chromedp.Action{
+		chromedp.Click(selector),
+	}
+	for _, sel := range waitForSelectors {
+		if sel != "" {
+			log.Printf("Warte auf Element nach Tab-Wechsel: %s", sel)
+			actions = append(actions, chromedp.WaitVisible(sel))
+		}
+	}
+	return chromedp.Run(ctx, actions...)
 }
