@@ -47,11 +47,9 @@ func (w *worker) startWorker(ctx context.Context, cardsChan <-chan common.CardIn
 
 			log.Printf("Worker %d: Bearbeite Karte: %s", w.workerID, card.GetFullName())
 
-			if false {
-				err := w.handleCard(card, browserCtx)
-				if err != nil {
-					continue
-				}
+			err := w.handleCard(card, browserCtx)
+			if err != nil {
+				continue
 			}
 
 			outputChan <- card
