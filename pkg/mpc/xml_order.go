@@ -9,22 +9,28 @@ import (
 var brackets = []int{18, 36, 55, 72, 90, 108, 126, 144, 162, 180, 198, 216, 234, 396, 504, 612}
 
 type Order struct {
-	Details  *OrderDetails `xml:"details"`
-	Fronts   *XmlCards     `xml:"fronts"`
-	Backs    *XmlCards     `xml:"backs"`
-	CardBack string        `xml:"cardback"`
+	projectName string
+	Details     *OrderDetails `xml:"details"`
+	Fronts      *XmlCards     `xml:"fronts"`
+	Backs       *XmlCards     `xml:"backs"`
+	CardBack    string        `xml:"cardback"`
 }
 
-func NewOrder() *Order {
+func NewOrder(projectName string) *Order {
 	return &Order{
+		projectName: projectName,
 		Details: &OrderDetails{
 			Quantity: 0,
 			Bracket:  18,
 			Stock:    "",
 			Foil:     false,
 		},
-		Fronts: &XmlCards{},
-		Backs:  &XmlCards{},
+		Fronts: &XmlCards{
+			projectName: projectName,
+		},
+		Backs: &XmlCards{
+			projectName: projectName,
+		},
 	}
 }
 

@@ -25,7 +25,7 @@ func New(config *Config) *MPC {
 
 func (m *MPC) Run(cards <-chan common.CardInfo, ctx context.Context) error {
 
-	order := NewOrder()
+	order := NewOrder(m.config.ProjectName)
 
 	for {
 		select {
@@ -45,8 +45,7 @@ func (m *MPC) Run(cards <-chan common.CardInfo, ctx context.Context) error {
 			}
 
 			// Save XML to file
-			fileName := fmt.Sprintf("%s_%s.xml", m.config.ProjectName, card.GetSanitizedName())
-			filePath := fmt.Sprintf("%s/%s", m.config.ProjectPath, fileName)
+			filePath := fmt.Sprintf("%s/%s.xml", m.config.ProjectPath, m.config.ProjectName)
 			err = os.WriteFile(filePath, xml, 0644)
 
 		}

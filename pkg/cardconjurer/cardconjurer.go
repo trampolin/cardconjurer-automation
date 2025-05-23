@@ -66,6 +66,7 @@ func (cc *CardConjurer) Run(ctx context.Context) {
 	log.Println("Alle Karten wurden an die Worker gesendet. Schließe cardsChan.")
 	close(cc.cardsChan)
 	wg.Wait()
+	close(cc.outputChan)
 	log.Println("Alle Worker haben ihre Arbeit beendet.")
 }
 

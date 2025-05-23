@@ -2,11 +2,13 @@ package mpc
 
 import (
 	"cardconjurer-automation/pkg/common"
+	"fmt"
 	"strconv"
 )
 
 type XmlCards struct {
-	Cards []XmlCard `xml:"card"`
+	projectName string
+	Cards       []XmlCard `xml:"card"`
 }
 
 func (xc *XmlCards) AddCard(card common.CardInfo) {
@@ -15,7 +17,7 @@ func (xc *XmlCards) AddCard(card common.CardInfo) {
 		xc.Cards = append(xc.Cards, XmlCard{
 			ID:    card.GetSanitizedName(),
 			Slots: strconv.Itoa(len(xc.Cards)),
-			Name:  card.GetSanitizedName(),
+			Name:  fmt.Sprintf("%s_%s.png", xc.projectName, card.GetSanitizedName()),
 			Query: card.GetName(),
 		})
 	}
