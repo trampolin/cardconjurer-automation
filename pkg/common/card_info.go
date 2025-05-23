@@ -1,4 +1,4 @@
-package cardconjurer
+package common
 
 type CardInfo interface {
 	GetFullName() string

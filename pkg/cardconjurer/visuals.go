@@ -1,6 +1,7 @@
 package cardconjurer
 
 import (
+	"cardconjurer-automation/pkg/common"
 	"context"
 	"fmt"
 	"github.com/chromedp/chromedp"
@@ -80,7 +81,7 @@ func (w *worker) addMargin(browserCtx context.Context) error {
 	return nil
 }
 
-func (w *worker) replaceArtwork(card CardInfo, browserCtx context.Context) error {
+func (w *worker) replaceArtwork(card common.CardInfo, browserCtx context.Context) error {
 	if w.config.InputArtworkFolder == "" {
 		//return nil
 	}

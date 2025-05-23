@@ -2,13 +2,16 @@ package main
 
 import (
 	"cardconjurer-automation/pkg/cardconjurer"
+	"cardconjurer-automation/pkg/common"
 	"cardconjurer-automation/pkg/decklist_parser"
+	"cardconjurer-automation/pkg/mpc"
 	"context"
 	"flag"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 func main() {
@@ -73,7 +76,7 @@ func main() {
 
 	log.Printf("card filter: %s", *cardsFilter)
 
-	var cardList []cardconjurer.CardInfo
+	var cardList []common.CardInfo
 	var filterSet map[string]struct{}
 	if *cardsFilter != "" {
 		filterSet = make(map[string]struct{})
@@ -87,20 +90,42 @@ func main() {
 				continue
 			}
 		}
-		cardList = append(cardList, &card)
+		cardList = append(cardList, card)
 	}
 
-	cfg := &cardconjurer.Config{
+	wg := &sync.WaitGroup{}
+	ctx := context.Background()
+
+	ccCfg := &cardconjurer.Config{
 		Workers:            *workers,
 		BaseUrl:            *baseUrl,
 		InputArtworkFolder: *input,
 		OutputCardsFolder:  *output,
 		ProjectName:        projectName,
 	}
-	cc, err := cardconjurer.New(cfg, cardList)
+
+	cc, err := cardconjurer.New(ccCfg, cardList)
 	if err != nil {
 		log.Fatal(err)
 	}
-	ctx := context.Background()
-	cc.Run(ctx)
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		cc.Run(ctx)
+	}()
+
+	mpcCfg := &mpc.Config{
+		ProjectPath: filepath.Dir(csvFile),
+		ProjectName: projectName,
+	}
+
+	mpc := mpc.New(mpcCfg)
+
+	go func() {
+		defer wg.Done()
+		mpc.Run(cc.GetOutputChan(), ctx)
+	}()
+
+	wg.Wait()
 }

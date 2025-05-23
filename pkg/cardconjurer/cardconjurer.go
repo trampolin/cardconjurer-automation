@@ -1,6 +1,7 @@
 package cardconjurer
 
 import (
+	"cardconjurer-automation/pkg/common"
 	"context"
 	"errors"
 	"log"
@@ -8,21 +9,27 @@ import (
 )
 
 type CardConjurer struct {
-	config    *Config
-	cards     []CardInfo
-	cardsChan chan CardInfo
+	config     *Config
+	cards      []common.CardInfo
+	cardsChan  chan common.CardInfo
+	outputChan chan common.CardInfo
 }
 
-func New(cfg *Config, cards []CardInfo) (*CardConjurer, error) {
+func New(cfg *Config, cards []common.CardInfo) (*CardConjurer, error) {
 
 	if cfg == nil {
 		return nil, errors.New("config is nil")
 	}
 
 	return &CardConjurer{
-		config: cfg,
-		cards:  cards,
+		config:     cfg,
+		cards:      cards,
+		outputChan: make(chan common.CardInfo, 1000),
 	}, nil
+}
+
+func (cc *CardConjurer) GetOutputChan() <-chan common.CardInfo {
+	return cc.outputChan
 }
 
 func (cc *CardConjurer) ListCards() {
@@ -33,7 +40,7 @@ func (cc *CardConjurer) ListCards() {
 
 func (cc *CardConjurer) Run(ctx context.Context) {
 	var wg sync.WaitGroup
-	cc.cardsChan = make(chan CardInfo, cc.config.Workers)
+	cc.cardsChan = make(chan common.CardInfo, cc.config.Workers)
 
 	log.Printf("Starte %d Worker...", cc.config.Workers)
 	// Worker starten
@@ -71,5 +78,5 @@ func (cc *CardConjurer) startWorker(id int, ctx context.Context, wg *sync.WaitGr
 	}()
 
 	w := newWorker(id, cc.config)
-	w.startWorker(ctx, cc.cardsChan)
+	w.startWorker(ctx, cc.cardsChan, cc.outputChan)
 }

@@ -1,6 +1,7 @@
 package decklist_parser
 
 import (
+	"cardconjurer-automation/pkg/common"
 	"encoding/csv"
 	"os"
 	"strconv"
@@ -8,7 +9,7 @@ import (
 
 type DecklistParser struct {
 	filename string
-	decklist []Card
+	decklist []common.CardInfo
 }
 
 func New(filename string) (*DecklistParser, error) {
@@ -24,7 +25,7 @@ func New(filename string) (*DecklistParser, error) {
 	return csvParser, nil
 }
 
-func (c *DecklistParser) Parse() ([]Card, error) {
+func (c *DecklistParser) Parse() ([]common.CardInfo, error) {
 	// Open the CSV file
 	file, err := os.Open(c.filename)
 	if err != nil {
@@ -50,7 +51,7 @@ func (c *DecklistParser) Parse() ([]Card, error) {
 		set := record[2]
 		collectorNumber := record[3]
 
-		card := Card{
+		card := &Card{
 			Count:           count,
 			Name:            name,
 			Set:             set,

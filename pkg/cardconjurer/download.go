@@ -1,6 +1,7 @@
 package cardconjurer
 
 import (
+	"cardconjurer-automation/pkg/common"
 	"context"
 	"fmt"
 	"github.com/chromedp/chromedp"
@@ -12,7 +13,7 @@ import (
 	"time"
 )
 
-func (w *worker) saveCard(card CardInfo, browserCtx context.Context) error {
+func (w *worker) saveCard(card common.CardInfo, browserCtx context.Context) error {
 	log.Println("Speichere Karte...")
 
 	homeDir, err := os.UserHomeDir()

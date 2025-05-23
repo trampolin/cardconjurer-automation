@@ -11,7 +11,8 @@ import (
 
 func (w *worker) openBrowser(parentCtx context.Context) (context.Context, error) {
 	log.Println("Starte neuen Browser...")
-	dir, err := os.MkdirTemp("", "chromedp-example")
+	log.Printf("Erstelle Temp-Verzeichnis für Worker %d: %s", w.workerID, w.tempDirName)
+	dir, err := os.MkdirTemp("", w.tempDirName)
 	if err != nil {
 		log.Printf("Fehler beim Erstellen des Temp-Verzeichnisses: %v", err)
 		return nil, err
@@ -61,6 +62,14 @@ func (w *worker) closeBrowser(browserCtx context.Context) {
 		log.Printf("Error closing browser: %v", err)
 	}
 	log.Println("Browser closed")
+	// Temp-Verzeichnis löschen
+	if w.tempDirName != "" {
+		if err := os.RemoveAll(w.tempDirName); err != nil {
+			log.Printf("Fehler beim Löschen des Temp-Verzeichnisses %s: %v", w.tempDirName, err)
+		} else {
+			log.Printf("Temp-Verzeichnis gelöscht: %s", w.tempDirName)
+		}
+	}
 }
 
 // openTab öffnet ein Tab anhand des Tab-Namens (z.B. "import", "frame").

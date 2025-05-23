@@ -1,6 +1,7 @@
 package cardconjurer
 
 import (
+	"cardconjurer-automation/pkg/common"
 	"context"
 	"fmt"
 	"github.com/chromedp/chromedp"
@@ -9,7 +10,7 @@ import (
 	"time"
 )
 
-func (w *worker) importCard(cardData CardInfo, browserCtx context.Context) error {
+func (w *worker) importCard(cardData common.CardInfo, browserCtx context.Context) error {
 	log.Printf("Starte Import für Karte: %s", cardData.GetFullName())
 
 	err := w.openTab(browserCtx, "import", "#import-name")
@@ -70,7 +71,7 @@ func (w *worker) checkImportAllPrints(browserCtx context.Context) error {
 	return nil
 }
 
-func (w *worker) loadCard(cardData CardInfo, browserCtx context.Context) error {
+func (w *worker) loadCard(cardData common.CardInfo, browserCtx context.Context) error {
 	// Vor dem Eintragen des Namens: Alle Optionen aus dem Dropdown entfernen
 	log.Println("Lösche alle Optionen aus #import-index vor neuer Suche...")
 	if err := chromedp.Run(browserCtx,
