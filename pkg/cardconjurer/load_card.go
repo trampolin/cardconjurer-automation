@@ -10,10 +10,11 @@ import (
 )
 
 func (w *worker) importCard(cardData common.CardInfo, browserCtx context.Context) error {
-	w.logger.Infof("Starting import for card: %s", cardData.GetFullName())
+	w.logger.Info("Starting import")
 
 	err := w.openTab(browserCtx, "import", "#import-name")
 	if err != nil {
+		w.logger.Errorw("Error opening import tab", "error", err)
 		return err
 	}
 
@@ -22,7 +23,7 @@ func (w *worker) importCard(cardData common.CardInfo, browserCtx context.Context
 		chromedp.Click(`h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="import"]`),
 		chromedp.WaitVisible(`#autoFrame`, chromedp.ByID),
 	); err != nil {
-		w.logger.Errorf("Error opening import tab: %v", err)
+		w.logger.Errorw("Error opening import tab", "error", err)
 		return err
 	}
 
@@ -32,16 +33,19 @@ func (w *worker) importCard(cardData common.CardInfo, browserCtx context.Context
 		chromedp.SetValue(`#autoFrame`, "Seventh"),
 		chromedp.WaitReady(`#importAllPrints`, chromedp.ByID),
 	); err != nil {
+		w.logger.Errorw("Error selecting 'Seventh' in dropdown", "error", err)
 		return err
 	}
 
 	// Further actions: check_import_all_prints and load_card
-	w.logger.Info("Checking 'Import All Prints' checkbox and loading card...")
+	w.logger.Info("Checking 'Import All Prints' checkbox and loading card")
 	if err := w.checkImportAllPrints(browserCtx); err != nil {
+		w.logger.Errorw("Error checking 'Import All Prints' checkbox", "error", err)
 		return err
 	}
-	w.logger.Info("Loading card...")
+	w.logger.Info("Loading card")
 	if err := w.loadCard(cardData, browserCtx); err != nil {
+		w.logger.Errorw("Error loading card", "error", err)
 		return err
 	}
 
@@ -55,6 +59,7 @@ func (w *worker) checkImportAllPrints(browserCtx context.Context) error {
 		chromedp.EvaluateAsDevTools(`document.querySelector('#importAllPrints')?.checked`, &checked),
 	)
 	if err != nil {
+		w.logger.Errorw("Error checking checkbox state", "error", err)
 		return err
 	}
 	if !checked {
@@ -64,6 +69,7 @@ func (w *worker) checkImportAllPrints(browserCtx context.Context) error {
 			chromedp.EvaluateAsDevTools(`document.querySelector('#importAllPrints').parentElement.click()`, nil),
 		)
 		if err != nil {
+			w.logger.Errorw("Error clicking checkbox", "error", err)
 			return err
 		}
 	}
@@ -72,11 +78,11 @@ func (w *worker) checkImportAllPrints(browserCtx context.Context) error {
 
 func (w *worker) loadCard(cardData common.CardInfo, browserCtx context.Context) error {
 	// Before entering name: remove all options from dropdown
-	w.logger.Info("Removing all options from #import-index before new search...")
+	w.logger.Info("Removing all options from #import-index before new search")
 	if err := chromedp.Run(browserCtx,
 		chromedp.Evaluate(`document.querySelectorAll('#import-index option').forEach(o => o.remove())`, nil),
 	); err != nil {
-		w.logger.Warnf("Could not remove options in dropdown: %v", err)
+		w.logger.Warnw("Could not remove options in dropdown", "error", err)
 		// not a fatal error, continue
 	}
 
@@ -93,6 +99,7 @@ func (w *worker) loadCard(cardData common.CardInfo, browserCtx context.Context) 
 		chromedp.Poll(`document.querySelectorAll('#import-index option').length > 1`, nil, chromedp.WithPollingInterval(100*time.Millisecond)),
 		chromedp.WaitReady(`#import-index`, chromedp.ByID),
 	); err != nil {
+		w.logger.Errorw("Error preparing import fields", "error", err)
 		return err
 	}
 
@@ -106,6 +113,7 @@ func (w *worker) loadCard(cardData common.CardInfo, browserCtx context.Context) 
 		chromedp.Evaluate(`Array.from(document.querySelectorAll('#import-index option')).map(o => o.textContent.trim())`, &optionTexts),
 		chromedp.Evaluate(`Array.from(document.querySelectorAll('#import-index option')).map(o => o.value)`, &optionValues),
 	); err != nil {
+		w.logger.Errorw("Error querying dropdown options", "error", err)
 		return err
 	}
 
@@ -134,10 +142,11 @@ func (w *worker) loadCard(cardData common.CardInfo, browserCtx context.Context) 
 			chromedp.SetValue(`#import-index`, valueToSelect),
 			chromedp.WaitReady(`#import-index`, chromedp.ByID),
 		); err != nil {
+			w.logger.Errorw("Error selecting card version in dropdown", "error", err)
 			return err
 		}
 	} else {
-		w.logger.Warnf("Warning: No matching card version found: %s", cardVersion)
+		w.logger.Warnw("No matching card version found", "searched", cardVersion)
 	}
 
 	return nil

@@ -8,6 +8,7 @@ import (
 	"context"
 	"flag"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,7 +16,10 @@ import (
 )
 
 func main() {
-	logger, _ := zap.NewProduction()
+	cfg := zap.NewProductionConfig()
+	cfg.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.000000")
+
+	logger, _ := cfg.Build()
 	defer logger.Sync()
 	sugar := logger.Sugar()
 
@@ -116,7 +120,7 @@ func main() {
 		ProjectName: projectName,
 	}
 
-	mpc := mpc.New(mpcCfg)
+	mpc := mpc.New(mpcCfg, sugar)
 
 	go func() {
 		defer wg.Done()

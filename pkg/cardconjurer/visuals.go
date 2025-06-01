@@ -29,14 +29,14 @@ func (w *worker) addMargin(browserCtx context.Context) error {
 	}
 
 	// Wait for the desired image element to load
-	w.logger.Info("Waiting for margin image element...")
+	w.logger.Info("Waiting for margin image element")
 	if err := chromedp.Run(browserCtx,
 		chromedp.WaitReady(`img[src="/img/frames/margins/blackBorderExtensionThumb.png"]`),
 	); err != nil {
 		return err
 	}
 
-	w.logger.Info("Clicking 'addToFull' button...")
+	w.logger.Info("Clicking 'addToFull' button")
 	if err := chromedp.Run(browserCtx,
 		chromedp.Click(`#addToFull`),
 	); err != nil {
@@ -47,7 +47,7 @@ func (w *worker) addMargin(browserCtx context.Context) error {
 	// Since the canvas cannot be directly compared, you can observe e.g. the size, an attribute or a hash of the image content.
 	// Here: Read a DataURL snapshot before the click and wait until it changes.
 
-	w.logger.Info("Waiting for canvas to update after 'addToFull'...")
+	w.logger.Info("Waiting for canvas to update after 'addToFull'")
 	var oldDataURL string
 	if err := chromedp.Run(browserCtx,
 		chromedp.Evaluate(`document.getElementById('previewCanvas')?.toDataURL()`, &oldDataURL),

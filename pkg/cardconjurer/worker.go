@@ -27,7 +27,7 @@ func newWorker(workerID int, logger *zap.SugaredLogger, config *Config) *worker 
 func (w *worker) startWorker(ctx context.Context, cardsChan <-chan common.CardInfo, outputChan chan<- common.CardInfo) {
 	browserCtx, err := w.openBrowser(ctx)
 	if err != nil {
-		w.logger.Errorf("Error opening browser: %v", err)
+		w.logger.Errorw("Error opening browser", "error", err)
 		return
 	}
 
@@ -47,8 +47,6 @@ func (w *worker) startWorker(ctx context.Context, cardsChan <-chan common.CardIn
 				return
 			}
 
-			w.logger.Infof("Processing card: %s", card.GetFullName())
-
 			err := w.handleCard(card, browserCtx)
 			if err != nil {
 				continue
@@ -57,40 +55,48 @@ func (w *worker) startWorker(ctx context.Context, cardsChan <-chan common.CardIn
 			outputChan <- card
 			time.Sleep(time.Millisecond * 250)
 
-			w.logger.Infof("Card '%s' processed.", card.GetFullName())
+			w.logger.Info("Card processed.")
 		}
 	}
 }
 
 func (w *worker) handleCard(card common.CardInfo, browserCtx context.Context) error {
+	oldLogger := w.logger
+	w.logger = w.logger.With("card", card.GetFullName())
+	defer func() {
+		w.logger = oldLogger
+	}()
+
+	w.logger.Info("Processing card")
+
 	err := w.importCard(card, browserCtx)
 	if err != nil {
-		w.logger.Errorf("Error importing card '%s': %v", card.GetFullName(), err)
+		w.logger.Errorw("Error importing card", "error", err)
 		return err
 	}
 
-	w.logger.Infof("Card '%s' imported, adding margin...", card.GetFullName())
+	w.logger.Info("Card imported, adding margin")
 	err = w.addMargin(browserCtx)
 	if err != nil {
-		w.logger.Errorf("Error adding margin for card '%s': %v", card.GetFullName(), err)
+		w.logger.Errorw("Error adding margin", "error", err)
 		return err
 	}
 
 	err = w.replaceArtwork(card, browserCtx)
 	if err != nil {
-		w.logger.Errorf("Error replacing artwork for card '%s': %v", card.GetFullName(), err)
+		w.logger.Errorw("Error replacing artwork", "error", err)
 		return err
 	}
 
 	err = w.removeSetSymbol(browserCtx)
 	if err != nil {
-		w.logger.Errorf("Error removing set symbol for card '%s': %v", card.GetFullName(), err)
+		w.logger.Errorw("Error removing set symbol", "error", err)
 		return err
 	}
 
 	err = w.saveCard(card, browserCtx)
 	if err != nil {
-		w.logger.Errorf("Error saving card '%s': %v", card.GetFullName(), err)
+		w.logger.Errorw("Error saving card", "error", err)
 		return err
 	}
 

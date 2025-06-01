@@ -26,7 +26,7 @@ func New(cfg *Config, logger *zap.SugaredLogger, cards []common.CardInfo) (*Card
 		config:     cfg,
 		cards:      cards,
 		outputChan: make(chan common.CardInfo, 1000),
-		logger:     logger.With("module", "CardConjurer"),
+		logger:     logger,
 	}, nil
 }
 
@@ -44,19 +44,19 @@ func (cc *CardConjurer) Run(ctx context.Context) {
 	var wg sync.WaitGroup
 	cc.cardsChan = make(chan common.CardInfo, cc.config.Workers)
 
-	cc.logger.Infof("Starting %d worker(s)...", cc.config.Workers)
+	cc.logger.Infof("Starting %d worker(s)", cc.config.Workers)
 	// Start workers
 	for i := 0; i < cc.config.Workers; i++ {
 		wg.Add(1)
 		go cc.startWorker(i, ctx, &wg)
 	}
 
-	cc.logger.Infof("Sending %d cards to workers...", len(cc.cards))
+	cc.logger.Infof("Sending %d cards to workers", len(cc.cards))
 	// Send cards to the channel
 	for _, card := range cc.cards {
 		select {
 		case <-ctx.Done():
-			cc.logger.Info("Context cancelled, closing cardsChan and waiting for workers...")
+			cc.logger.Info("Context cancelled, closing cardsChan and waiting for workers")
 			close(cc.cardsChan)
 			wg.Wait()
 			cc.logger.Info("All workers finished.")

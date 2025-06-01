@@ -9,7 +9,7 @@ import (
 )
 
 func (w *worker) openBrowser(parentCtx context.Context) (context.Context, error) {
-	w.logger.Info("Starting new browser...")
+	w.logger.Info("Starting new browser session")
 	w.logger.Infof("Creating temp directory for worker %d: %s", w.workerID, w.tempDirName)
 	dir, err := os.MkdirTemp("", w.tempDirName)
 	if err != nil {
@@ -56,7 +56,7 @@ func (w *worker) openBrowser(parentCtx context.Context) (context.Context, error)
 }
 
 func (w *worker) closeBrowser(browserCtx context.Context) {
-	w.logger.Info("Closing browser...")
+	w.logger.Info("Closing browser session")
 	if err := chromedp.Cancel(browserCtx); err != nil {
 		w.logger.Errorf("Error closing browser: %v", err)
 	}

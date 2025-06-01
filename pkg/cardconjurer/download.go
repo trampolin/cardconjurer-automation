@@ -13,7 +13,7 @@ import (
 )
 
 func (w *worker) saveCard(card common.CardInfo, browserCtx context.Context) error {
-	w.logger.Info("Saving card...")
+	w.logger.Info("Saving card")
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
