@@ -10,22 +10,22 @@ import (
 )
 
 func (w *worker) openBrowser(parentCtx context.Context) (context.Context, error) {
-	log.Println("Starte neuen Browser...")
-	log.Printf("Erstelle Temp-Verzeichnis für Worker %d: %s", w.workerID, w.tempDirName)
+	log.Println("Starting new browser...")
+	log.Printf("Creating temp directory for worker %d: %s", w.workerID, w.tempDirName)
 	dir, err := os.MkdirTemp("", w.tempDirName)
 	if err != nil {
-		log.Printf("Fehler beim Erstellen des Temp-Verzeichnisses: %v", err)
+		log.Printf("Error creating temp directory: %v", err)
 		return nil, err
 	}
-	// os.RemoveAll(dir) sollte vom Aufrufer übernommen werden
+	// os.RemoveAll(dir) should be handled by the caller
 
-	// Setze den Download-Ordner explizit auf das gewünschte OutputCardsFolder
+	// Explicitly set the download folder to the desired OutputCardsFolder
 	downloadDir := w.config.OutputCardsFolder
 	if downloadDir == "" {
-		downloadDir = dir // Fallback
+		downloadDir = dir // fallback
 	}
 
-	log.Println("Download Dir:", downloadDir)
+	log.Println("Download directory:", downloadDir)
 
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.DisableGPU,
@@ -36,15 +36,15 @@ func (w *worker) openBrowser(parentCtx context.Context) (context.Context, error)
 	)
 
 	allocCtx, cancel := chromedp.NewExecAllocator(parentCtx, opts...)
-	// cancel sollte vom Aufrufer übernommen werden
+	// cancel should be handled by the caller
 
 	taskCtx, cancel2 := chromedp.NewContext(allocCtx, chromedp.WithLogf(log.Printf))
-	// cancel2 sollte vom Aufrufer übernommen werden
+	// cancel2 should be handled by the caller
 
-	log.Printf("Opening browser at %s and sleep for two seconds", w.config.BaseUrl)
+	log.Printf("Opening browser at %s and sleeping for two seconds", w.config.BaseUrl)
 	if err := chromedp.Run(taskCtx,
 		chromedp.Navigate(w.config.BaseUrl),
-		// Warte, bis das Dokument vollständig geladen ist
+		// Wait until the document is fully loaded
 		chromedp.WaitReady("body"),
 		chromedp.Sleep(2*time.Second),
 	); err != nil {
@@ -57,32 +57,32 @@ func (w *worker) openBrowser(parentCtx context.Context) (context.Context, error)
 }
 
 func (w *worker) closeBrowser(browserCtx context.Context) {
-	log.Println("Schließe Browser...")
+	log.Println("Closing browser...")
 	if err := chromedp.Cancel(browserCtx); err != nil {
 		log.Printf("Error closing browser: %v", err)
 	}
 	log.Println("Browser closed")
-	// Temp-Verzeichnis löschen
+	// Delete temp directory
 	if w.tempDirName != "" {
 		if err := os.RemoveAll(w.tempDirName); err != nil {
-			log.Printf("Fehler beim Löschen des Temp-Verzeichnisses %s: %v", w.tempDirName, err)
+			log.Printf("Error deleting temp directory %s: %v", w.tempDirName, err)
 		} else {
-			log.Printf("Temp-Verzeichnis gelöscht: %s", w.tempDirName)
+			log.Printf("Temp directory deleted: %s", w.tempDirName)
 		}
 	}
 }
 
-// openTab öffnet ein Tab anhand des Tab-Namens (z.B. "import", "frame").
-// Es kann auf beliebig viele Selektoren nach dem Klick gewartet werden.
+// openTab opens a tab by its name (e.g. "import", "frame").
+// It can wait for any number of selectors after the click.
 func (w *worker) openTab(ctx context.Context, tabName string, waitForSelectors ...string) error {
 	selector := fmt.Sprintf(`h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="%s"]`, tabName)
-	log.Printf("Öffne Tab: %s", tabName)
+	log.Printf("Opening tab: %s", tabName)
 	actions := []chromedp.Action{
 		chromedp.Click(selector),
 	}
 	for _, sel := range waitForSelectors {
 		if sel != "" {
-			log.Printf("Warte auf Element nach Tab-Wechsel: %s", sel)
+			log.Printf("Waiting for element after tab switch: %s", sel)
 			actions = append(actions, chromedp.WaitVisible(sel))
 		}
 	}

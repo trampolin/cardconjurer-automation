@@ -42,39 +42,39 @@ func (cc *CardConjurer) Run(ctx context.Context) {
 	var wg sync.WaitGroup
 	cc.cardsChan = make(chan common.CardInfo, cc.config.Workers)
 
-	log.Printf("Starte %d Worker...", cc.config.Workers)
-	// Worker starten
+	log.Printf("Starting %d worker(s)...", cc.config.Workers)
+	// Start workers
 	for i := 0; i < cc.config.Workers; i++ {
 		wg.Add(1)
 		go cc.startWorker(i, ctx, &wg)
 	}
 
-	log.Printf("Sende %d Karten an die Worker...", len(cc.cards))
-	// Karten in den Channel senden
+	log.Printf("Sending %d cards to workers...", len(cc.cards))
+	// Send cards to the channel
 	for _, card := range cc.cards {
 		select {
 		case <-ctx.Done():
-			log.Println("Context abgebrochen, schließe cardsChan und warte auf Worker...")
+			log.Println("Context cancelled, closing cardsChan and waiting for workers...")
 			close(cc.cardsChan)
 			wg.Wait()
-			log.Println("Alle Worker beendet.")
+			log.Println("All workers finished.")
 			return
 		case cc.cardsChan <- card:
-			log.Printf("Karte '%s' an Worker gesendet.", card.GetFullName())
+			log.Printf("Card '%s' sent to worker.", card.GetFullName())
 		}
 	}
-	log.Println("Alle Karten wurden an die Worker gesendet. Schließe cardsChan.")
+	log.Println("All cards have been sent to workers. Closing cardsChan.")
 	close(cc.cardsChan)
 	wg.Wait()
 	close(cc.outputChan)
-	log.Println("Alle Worker haben ihre Arbeit beendet.")
+	log.Println("All workers have finished their work.")
 }
 
 func (cc *CardConjurer) startWorker(id int, ctx context.Context, wg *sync.WaitGroup) {
-	log.Printf("Starte Worker %d", id)
+	log.Printf("Starting worker %d", id)
 
 	defer func() {
-		log.Printf("Worker %d: beendet", id)
+		log.Printf("Worker %d: finished", id)
 		wg.Done()
 	}()
 

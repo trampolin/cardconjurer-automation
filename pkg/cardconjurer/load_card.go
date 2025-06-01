@@ -11,24 +11,24 @@ import (
 )
 
 func (w *worker) importCard(cardData common.CardInfo, browserCtx context.Context) error {
-	log.Printf("Starte Import für Karte: %s", cardData.GetFullName())
+	log.Printf("Starting import for card: %s", cardData.GetFullName())
 
 	err := w.openTab(browserCtx, "import", "#import-name")
 	if err != nil {
 		return err
 	}
 
-	// Klick auf das Import-Tab und warte, bis das Dropdown sichtbar ist
+	// Click import tab and wait for dropdown to be visible
 	if err := chromedp.Run(browserCtx,
 		chromedp.Click(`h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="import"]`),
 		chromedp.WaitVisible(`#autoFrame`, chromedp.ByID),
 	); err != nil {
-		log.Printf("Fehler beim Öffnen des Import-Tabs: %v", err)
+		log.Printf("Error opening import tab: %v", err)
 		return err
 	}
 
-	log.Println("Import-Tab geöffnet, wähle Option 'Seventh' im Dropdown.")
-	// Wähle Option 'Seventh' im Dropdown mit id 'autoFrame' und warte, bis die Checkbox bereit ist
+	log.Println("Import tab opened, selecting option 'Seventh' in dropdown.")
+	// Select option 'Seventh' in dropdown with id 'autoFrame' and wait for checkbox to be ready
 	if err := chromedp.Run(browserCtx,
 		chromedp.SetValue(`#autoFrame`, "Seventh"),
 		chromedp.WaitReady(`#importAllPrints`, chromedp.ByID),
@@ -36,12 +36,12 @@ func (w *worker) importCard(cardData common.CardInfo, browserCtx context.Context
 		return err
 	}
 
-	// Weitere Aktionen: check_import_all_prints und load_card
-	log.Println("Überprüfe Checkbox 'Import All Prints' und lade Karte...")
+	// Further actions: check_import_all_prints and load_card
+	log.Println("Checking 'Import All Prints' checkbox and loading card...")
 	if err := w.checkImportAllPrints(browserCtx); err != nil {
 		return err
 	}
-	log.Println("Lade Karte...")
+	log.Println("Loading card...")
 	if err := w.loadCard(cardData, browserCtx); err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func (w *worker) importCard(cardData common.CardInfo, browserCtx context.Context
 
 func (w *worker) checkImportAllPrints(browserCtx context.Context) error {
 	var checked bool
-	// Prüfe, ob die Checkbox gecheckt ist
+	// Check if checkbox is checked
 	err := chromedp.Run(browserCtx,
 		chromedp.EvaluateAsDevTools(`document.querySelector('#importAllPrints')?.checked`, &checked),
 	)
@@ -59,8 +59,8 @@ func (w *worker) checkImportAllPrints(browserCtx context.Context) error {
 		return err
 	}
 	if !checked {
-		log.Println("Checkbox 'Import All Prints' ist nicht gecheckt, klicke darauf.")
-		// Klicke auf das Parent-Element der Checkbox und warte, bis die Checkbox wieder sichtbar ist
+		log.Println("Checkbox 'Import All Prints' is not checked, clicking it.")
+		// Click parent element of checkbox and wait until checkbox is visible again
 		err = chromedp.Run(browserCtx,
 			chromedp.EvaluateAsDevTools(`document.querySelector('#importAllPrints').parentElement.click()`, nil),
 		)
@@ -72,16 +72,16 @@ func (w *worker) checkImportAllPrints(browserCtx context.Context) error {
 }
 
 func (w *worker) loadCard(cardData common.CardInfo, browserCtx context.Context) error {
-	// Vor dem Eintragen des Namens: Alle Optionen aus dem Dropdown entfernen
-	log.Println("Lösche alle Optionen aus #import-index vor neuer Suche...")
+	// Before entering name: remove all options from dropdown
+	log.Println("Removing all options from #import-index before new search...")
 	if err := chromedp.Run(browserCtx,
 		chromedp.Evaluate(`document.querySelectorAll('#import-index option').forEach(o => o.remove())`, nil),
 	); err != nil {
-		log.Printf("Konnte Optionen im Dropdown nicht löschen: %v", err)
-		// kein fataler Fehler, weitermachen
+		log.Printf("Could not remove options in dropdown: %v", err)
+		// not a fatal error, continue
 	}
 
-	// Tab drücken: Fokus setzen, dann Tab-Key als RawEvent senden, danach warten bis das Dropdown bereit ist
+	// Press tab: set focus, then send tab key as raw event, then wait for dropdown to be ready
 	if err := chromedp.Run(browserCtx,
 		chromedp.WaitVisible(`#import-name`, chromedp.ByID),
 		chromedp.WaitReady(`#import-name`, chromedp.ByID),
@@ -90,17 +90,17 @@ func (w *worker) loadCard(cardData common.CardInfo, browserCtx context.Context) 
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			return chromedp.SendKeys(`#import-name`, "\t", chromedp.ByID).Do(ctx)
 		}),
-		// Warte, bis mindestens eine Option im Dropdown geladen ist
+		// Wait until at least one option in dropdown is loaded
 		chromedp.Poll(`document.querySelectorAll('#import-index option').length > 1`, nil, chromedp.WithPollingInterval(100*time.Millisecond)),
 		chromedp.WaitReady(`#import-index`, chromedp.ByID),
 	); err != nil {
 		return err
 	}
 
-	// Card-Version-String bauen
+	// Build card version string
 	cardVersion := cardData.GetFullName()
 
-	// Alle Optionen im Dropdown abfragen
+	// Query all options in dropdown
 	var optionTexts []string
 	var optionValues []string
 	if err := chromedp.Run(browserCtx,
@@ -110,7 +110,7 @@ func (w *worker) loadCard(cardData common.CardInfo, browserCtx context.Context) 
 		return err
 	}
 
-	// Passende Option suchen (auch auf exakte Übereinstimmung nach Trim)
+	// Find matching option (also check for exact match after trim)
 	var valueToSelect string
 	for i, text := range optionTexts {
 		if text == cardVersion {
@@ -119,7 +119,7 @@ func (w *worker) loadCard(cardData common.CardInfo, browserCtx context.Context) 
 		}
 	}
 	if valueToSelect == "" {
-		// Versuche es mit Whitespace-ignorierender Suche
+		// Try whitespace-insensitive search
 		for i, text := range optionTexts {
 			if strings.TrimSpace(text) == strings.TrimSpace(cardVersion) {
 				valueToSelect = optionValues[i]
@@ -129,7 +129,7 @@ func (w *worker) loadCard(cardData common.CardInfo, browserCtx context.Context) 
 	}
 
 	if valueToSelect != "" {
-		// Option auswählen und warten, bis das Dropdown wieder bereit ist
+		// Select option and wait for dropdown to be ready again
 		if err := chromedp.Run(browserCtx,
 			chromedp.SetAttributeValue(fmt.Sprintf(`#import-index option[value="%s"]`, valueToSelect), "selected", "true"),
 			chromedp.SetValue(`#import-index`, valueToSelect),
@@ -138,7 +138,7 @@ func (w *worker) loadCard(cardData common.CardInfo, browserCtx context.Context) 
 			return err
 		}
 	} else {
-		log.Printf("Warnung: Keine passende Karten-Version gefunden: %s", cardVersion)
+		log.Printf("Warning: No matching card version found: %s", cardVersion)
 	}
 
 	return nil

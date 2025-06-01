@@ -11,8 +11,8 @@ import (
 )
 
 func (w *worker) addMargin(browserCtx context.Context) error {
-	// Klick auf das Frame-Tab und warte, bis das Dropdown sichtbar ist
-	log.Println("Starte Margin-Import")
+	// Click on the frame tab and wait for the dropdown to be visible
+	log.Println("Starting margin import")
 	if err := chromedp.Run(browserCtx,
 		chromedp.Click(`h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="frame"]`),
 		chromedp.WaitVisible(`#selectFrameGroup`, chromedp.ByID),
@@ -20,8 +20,8 @@ func (w *worker) addMargin(browserCtx context.Context) error {
 		return err
 	}
 
-	// Wähle "Margin" im Dropdown und warte, bis der Button bereit ist
-	log.Println("Wähle 'Margin' im Frame-Dropdown")
+	// Select "Margin" in the dropdown and wait for the button to be ready
+	log.Println("Selecting 'Margin' in frame dropdown")
 	if err := chromedp.Run(browserCtx,
 		chromedp.SetValue(`#selectFrameGroup`, "Margin"),
 		chromedp.WaitReady(`#addToFull`, chromedp.ByID),
@@ -29,32 +29,32 @@ func (w *worker) addMargin(browserCtx context.Context) error {
 		return err
 	}
 
-	// Warte, bis das gewünschte Bild-Element geladen ist
-	log.Println("Warte auf das Margin-Bild-Element...")
+	// Wait for the desired image element to load
+	log.Println("Waiting for margin image element...")
 	if err := chromedp.Run(browserCtx,
 		chromedp.WaitReady(`img[src="/img/frames/margins/blackBorderExtensionThumb.png"]`),
 	); err != nil {
 		return err
 	}
 
-	log.Println("Klicke auf 'addToFull'-Button...")
+	log.Println("Clicking 'addToFull' button...")
 	if err := chromedp.Run(browserCtx,
 		chromedp.Click(`#addToFull`),
 	); err != nil {
 		return err
 	}
 
-	// Nach dem Klick auf 'addToFull': Warte, bis sich das Canvas-Element (#previewCanvas) ändert.
-	// Da sich das Canvas nicht direkt vergleichen lässt, kann man z.B. die Größe, ein Attribut oder einen Hash des Bildinhalts beobachten.
-	// Hier: Wir lesen vor dem Klick ein DataURL-Snapshot und warten, bis sich dieser ändert.
+	// After clicking 'addToFull': wait for the canvas element (#previewCanvas) to change.
+	// Since the canvas cannot be directly compared, you can observe e.g. the size, an attribute or a hash of the image content.
+	// Here: Read a DataURL snapshot before the click and wait until it changes.
 
-	log.Println("Warte auf Änderung des Canvas nach 'addToFull'...")
+	log.Println("Waiting for canvas to update after 'addToFull'...")
 	var oldDataURL string
 	if err := chromedp.Run(browserCtx,
 		chromedp.Evaluate(`document.getElementById('previewCanvas')?.toDataURL()`, &oldDataURL),
 	); err != nil {
-		log.Printf("Konnte Canvas-DataURL nicht lesen: %v", err)
-		// kein fataler Fehler, weitermachen
+		log.Printf("Could not read canvas DataURL: %v", err)
+		// not a fatal error, continue
 	}
 
 	if oldDataURL != "" {
@@ -69,15 +69,15 @@ func (w *worker) addMargin(browserCtx context.Context) error {
 			chromedp.Evaluate(`document.getElementById('previewCanvas')?.toDataURL()`, &newDataURL),
 		)
 		if err != nil {
-			log.Printf("Timeout oder Fehler beim Warten auf Canvas-Update: %v", err)
+			log.Printf("Timeout or error while waiting for canvas update: %v", err)
 		} else {
-			log.Printf("Canvas wurde aktualisiert.")
+			log.Printf("Canvas updated.")
 		}
 	} else {
-		log.Println("Kein Canvas-DataURL gefunden, kann nicht auf Änderung warten.")
+		log.Println("No canvas DataURL found, cannot wait for update.")
 	}
 
-	log.Println("Margin-Import abgeschlossen")
+	log.Println("Margin import finished")
 	return nil
 }
 
@@ -86,8 +86,8 @@ func (w *worker) replaceArtwork(card common.CardInfo, browserCtx context.Context
 		//return nil
 	}
 
-	// Klick auf das Artwork-Tab und warte, bis das File-Input sichtbar ist
-	log.Println("Starte Artwork-Import")
+	// Click on the artwork tab and wait for the file input to be visible
+	log.Println("Starting artwork import")
 	inputSelector := `input[type="file"][accept*=".png"][data-dropfunction="uploadArt"]`
 	err := w.openTab(
 		browserCtx,
@@ -98,27 +98,27 @@ func (w *worker) replaceArtwork(card common.CardInfo, browserCtx context.Context
 		return err
 	}
 
-	// Prüfe, ob eine passende PNG-Datei im Artwork-Ordner existiert
+	// Check if a matching PNG file exists in the artwork folder
 	filename := fmt.Sprintf("%s.png", card.GetName())
 	filepath := fmt.Sprintf("%s/%s", w.config.InputArtworkFolder, filename)
 	if _, err := os.Stat(filepath); err != nil {
 		if os.IsNotExist(err) {
-			log.Printf("Artwork-Datei nicht gefunden: %s", filepath)
+			log.Printf("Artwork file not found: %s", filepath)
 			return nil
 		}
 
 		return err
 	}
 
-	log.Printf("Artwork-Datei gefunden: %s", filepath)
-	// Setze den Dateipfad als Wert für das File-Input
+	log.Printf("Artwork file found: %s", filepath)
+	// Set the file path as value for the file input
 	if err := chromedp.Run(browserCtx,
 		chromedp.SetUploadFiles(inputSelector, []string{filepath}),
 	); err != nil {
-		log.Printf("Fehler beim Setzen der Artwork-Datei: %v", err)
+		log.Printf("Error setting artwork file: %v", err)
 		return err
 	}
-	log.Printf("Artwork-Datei %s erfolgreich gesetzt.", filepath)
+	log.Printf("Artwork file %s set successfully.", filepath)
 
 	return nil
 }
@@ -132,7 +132,7 @@ func (w *worker) removeSetSymbol(browserCtx context.Context) error {
 		return err
 	}
 
-	// Klicke auf den Button, um das Set-Symbol zu entfernen
+	// Click the button to remove the set symbol
 	if err := chromedp.Run(browserCtx,
 		chromedp.Click(buttonSelector),
 		chromedp.Sleep(250*time.Millisecond),

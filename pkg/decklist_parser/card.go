@@ -21,13 +21,13 @@ func (c *Card) GetFullName() string {
 }
 
 func (c *Card) GetSanitizedName() string {
-	// Alles in Kleinbuchstaben
+	// Everything in lowercase
 	name := strings.ToLower(c.Name)
-	// Ersetze Leerzeichen durch Unterstrich
+	// Replace spaces with underscores
 	name = strings.ReplaceAll(name, " ", "_")
-	// Ersetze typografisches Apostroph durch normales
+	// Replace typographic apostrophe with straight apostrophe
 	name = strings.ReplaceAll(name, "’", "'")
-	// Entferne alle Zeichen, die keine Buchstaben, Zahlen oder Unterstriche sind
+	// Remove all characters except letters, numbers, or underscores
 	var sanitized strings.Builder
 	for _, r := range name {
 		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' {
