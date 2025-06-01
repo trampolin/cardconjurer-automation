@@ -1,14 +1,19 @@
 package main
 
 import (
+	"cardconjurer-automation/pkg/api"
 	"cardconjurer-automation/pkg/cardconjurer"
 	"cardconjurer-automation/pkg/common"
 	"cardconjurer-automation/pkg/decklist_parser"
 	"cardconjurer-automation/pkg/mpc"
 	"context"
 	"flag"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,6 +61,8 @@ func main() {
 	if *output == "" && csvFile != "" {
 		*output = filepath.Join(filepath.Dir(csvFile), "cards")
 	}
+
+	serve(sugar)
 
 	if err := os.MkdirAll(*input, 0755); err != nil {
 		sugar.Fatalf("Could not create artwork folder: %v", err)
@@ -128,4 +135,19 @@ func main() {
 	}()
 
 	wg.Wait()
+}
+
+func serve(logger *zap.SugaredLogger) {
+	ccApi := api.New(logger, nil)
+
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(cors.AllowAll().Handler)
+	r.Get("/api/hello", ccApi.HelloHandler)
+
+	r.Handle("/*", http.FileServer(http.Dir("frontend/dist/frontend/browser/")))
+	err := http.ListenAndServe(":8080", r)
+	if err != nil {
+		panic(err)
+	}
 }

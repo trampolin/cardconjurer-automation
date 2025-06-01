@@ -10,6 +10,8 @@ require (
 require (
 	github.com/chromedp/cdproto v0.0.0-20250521201632-aadd49e0822c // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
+	github.com/go-chi/chi/v5 v5.2.1 // indirect
+	github.com/go-chi/cors v1.2.1 // indirect
 	github.com/go-json-experiment/json v0.0.0-20250517221953-25912455fbc8 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
