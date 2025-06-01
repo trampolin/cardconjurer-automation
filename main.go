@@ -20,15 +20,15 @@ func main() {
 	sugar := logger.Sugar()
 
 	baseUrl := flag.String("base-url", "", "base url")
-	output := flag.String("output", "", "Pfad zum Ausgabeverzeichnis der Karten")
-	input := flag.String("input", "", "Pfad zum Artwork-Verzeichnis")
-	cardsFilter := flag.String("cards-filter", "", "Kartenfilter (optional, kommasepariert)")
-	workers := flag.Int("workers", 2, "Anzahl der Worker")
+	output := flag.String("output", "", "Path to the output directory for cards")
+	input := flag.String("input", "", "Path to the artwork directory")
+	cardsFilter := flag.String("cards-filter", "", "Card filter (optional, comma separated)")
+	workers := flag.Int("workers", 2, "Number of workers")
 	flag.Parse()
 
 	if flag.NArg() < 1 {
-		sugar.Error("Fehler: Pfad zur CSV-Datei muss als Argument übergeben werden.")
-		sugar.Info("Aufruf: ./programm [flags] <csv-file>")
+		sugar.Error("Error: Path to CSV file must be provided as an argument.")
+		sugar.Info("Usage: ./program [flags] <csv-file>")
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -54,10 +54,10 @@ func main() {
 	}
 
 	if err := os.MkdirAll(*input, 0755); err != nil {
-		sugar.Fatalf("Konnte Artwork-Ordner nicht erstellen: %v", err)
+		sugar.Fatalf("Could not create artwork folder: %v", err)
 	}
 	if err := os.MkdirAll(*output, 0755); err != nil {
-		sugar.Fatalf("Konnte Cards-Ordner nicht erstellen: %v", err)
+		sugar.Fatalf("Could not create cards folder: %v", err)
 	}
 
 	dp, err := decklist_parser.New(csvFile)
