@@ -100,7 +100,7 @@ func main() {
 		ProjectName:        projectName,
 	}
 
-	cc, err := cardconjurer.New(ccCfg, cardList)
+	cc, err := cardconjurer.New(ccCfg, sugar, cardList)
 	if err != nil {
 		sugar.Fatal(err)
 	}

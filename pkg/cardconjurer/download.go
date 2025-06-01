@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/chromedp/chromedp"
 	"io"
-	"log"
 	"os"
 	"path"
 	"strings"
@@ -14,7 +13,7 @@ import (
 )
 
 func (w *worker) saveCard(card common.CardInfo, browserCtx context.Context) error {
-	log.Println("Saving card...")
+	w.logger.Info("Saving card...")
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -30,14 +29,14 @@ func (w *worker) saveCard(card common.CardInfo, browserCtx context.Context) erro
 
 	// Before download: Delete existing file in download folder if present (both variants)
 	if _, err := os.Stat(downloadPath); err == nil {
-		log.Printf("Deleting existing file in download folder: %s", downloadPath)
+		w.logger.Infof("Deleting existing file in download folder: %s", downloadPath)
 		if err := os.Remove(downloadPath); err != nil {
 			return fmt.Errorf("error deleting old download file: %v", err)
 		}
 	}
 	if altDownloadPath != downloadPath {
 		if _, err := os.Stat(altDownloadPath); err == nil {
-			log.Printf("Deleting existing file in download folder: %s", altDownloadPath)
+			w.logger.Infof("Deleting existing file in download folder: %s", altDownloadPath)
 			if err := os.Remove(altDownloadPath); err != nil {
 				return fmt.Errorf("error deleting old alternative download file: %v", err)
 			}
@@ -64,12 +63,12 @@ func (w *worker) saveCard(card common.CardInfo, browserCtx context.Context) erro
 		case <-ticker.C:
 			if _, err := os.Stat(downloadPath); err == nil {
 				foundPath = downloadPath
-				log.Printf("Card saved: %s", downloadPath)
+				w.logger.Infof("Card saved: %s", downloadPath)
 			}
 			if altDownloadPath != downloadPath {
 				if _, err := os.Stat(altDownloadPath); err == nil {
 					foundPath = altDownloadPath
-					log.Printf("Card saved (typographic apostrophe): %s", altDownloadPath)
+					w.logger.Infof("Card saved (typographic apostrophe): %s", altDownloadPath)
 				}
 			}
 		}
@@ -80,7 +79,7 @@ func (w *worker) saveCard(card common.CardInfo, browserCtx context.Context) erro
 	}
 
 	// Move file to target directory (always with straight apostrophe in target name)
-	log.Printf("Moving file to: %s", targetPath)
+	w.logger.Infof("Moving file to: %s", targetPath)
 	err = os.Rename(foundPath, targetPath)
 	if err != nil {
 		// Fallback: Copy and delete if Rename fails (e.g. across filesystems)
@@ -105,6 +104,6 @@ func (w *worker) saveCard(card common.CardInfo, browserCtx context.Context) erro
 			return fmt.Errorf("error removing source file: %v", errRemove)
 		}
 	}
-	log.Printf("File successfully moved: %s", targetPath)
+	w.logger.Infof("File successfully moved: %s", targetPath)
 	return nil
 }

@@ -5,13 +5,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/chromedp/chromedp"
-	"log"
 	"strings"
 	"time"
 )
 
 func (w *worker) importCard(cardData common.CardInfo, browserCtx context.Context) error {
-	log.Printf("Starting import for card: %s", cardData.GetFullName())
+	w.logger.Infof("Starting import for card: %s", cardData.GetFullName())
 
 	err := w.openTab(browserCtx, "import", "#import-name")
 	if err != nil {
@@ -23,11 +22,11 @@ func (w *worker) importCard(cardData common.CardInfo, browserCtx context.Context
 		chromedp.Click(`h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="import"]`),
 		chromedp.WaitVisible(`#autoFrame`, chromedp.ByID),
 	); err != nil {
-		log.Printf("Error opening import tab: %v", err)
+		w.logger.Errorf("Error opening import tab: %v", err)
 		return err
 	}
 
-	log.Println("Import tab opened, selecting option 'Seventh' in dropdown.")
+	w.logger.Info("Import tab opened, selecting option 'Seventh' in dropdown.")
 	// Select option 'Seventh' in dropdown with id 'autoFrame' and wait for checkbox to be ready
 	if err := chromedp.Run(browserCtx,
 		chromedp.SetValue(`#autoFrame`, "Seventh"),
@@ -37,11 +36,11 @@ func (w *worker) importCard(cardData common.CardInfo, browserCtx context.Context
 	}
 
 	// Further actions: check_import_all_prints and load_card
-	log.Println("Checking 'Import All Prints' checkbox and loading card...")
+	w.logger.Info("Checking 'Import All Prints' checkbox and loading card...")
 	if err := w.checkImportAllPrints(browserCtx); err != nil {
 		return err
 	}
-	log.Println("Loading card...")
+	w.logger.Info("Loading card...")
 	if err := w.loadCard(cardData, browserCtx); err != nil {
 		return err
 	}
@@ -59,7 +58,7 @@ func (w *worker) checkImportAllPrints(browserCtx context.Context) error {
 		return err
 	}
 	if !checked {
-		log.Println("Checkbox 'Import All Prints' is not checked, clicking it.")
+		w.logger.Info("Checkbox 'Import All Prints' is not checked, clicking it.")
 		// Click parent element of checkbox and wait until checkbox is visible again
 		err = chromedp.Run(browserCtx,
 			chromedp.EvaluateAsDevTools(`document.querySelector('#importAllPrints').parentElement.click()`, nil),
@@ -73,11 +72,11 @@ func (w *worker) checkImportAllPrints(browserCtx context.Context) error {
 
 func (w *worker) loadCard(cardData common.CardInfo, browserCtx context.Context) error {
 	// Before entering name: remove all options from dropdown
-	log.Println("Removing all options from #import-index before new search...")
+	w.logger.Info("Removing all options from #import-index before new search...")
 	if err := chromedp.Run(browserCtx,
 		chromedp.Evaluate(`document.querySelectorAll('#import-index option').forEach(o => o.remove())`, nil),
 	); err != nil {
-		log.Printf("Could not remove options in dropdown: %v", err)
+		w.logger.Warnf("Could not remove options in dropdown: %v", err)
 		// not a fatal error, continue
 	}
 
@@ -138,7 +137,7 @@ func (w *worker) loadCard(cardData common.CardInfo, browserCtx context.Context) 
 			return err
 		}
 	} else {
-		log.Printf("Warning: No matching card version found: %s", cardVersion)
+		w.logger.Warnf("Warning: No matching card version found: %s", cardVersion)
 	}
 
 	return nil

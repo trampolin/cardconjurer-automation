@@ -5,14 +5,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/chromedp/chromedp"
-	"log"
 	"os"
 	"time"
 )
 
 func (w *worker) addMargin(browserCtx context.Context) error {
 	// Click on the frame tab and wait for the dropdown to be visible
-	log.Println("Starting margin import")
+	w.logger.Info("Starting margin import")
 	if err := chromedp.Run(browserCtx,
 		chromedp.Click(`h3.selectable.readable-background[onclick*="toggleCreatorTabs"][onclick*="frame"]`),
 		chromedp.WaitVisible(`#selectFrameGroup`, chromedp.ByID),
@@ -21,7 +20,7 @@ func (w *worker) addMargin(browserCtx context.Context) error {
 	}
 
 	// Select "Margin" in the dropdown and wait for the button to be ready
-	log.Println("Selecting 'Margin' in frame dropdown")
+	w.logger.Info("Selecting 'Margin' in frame dropdown")
 	if err := chromedp.Run(browserCtx,
 		chromedp.SetValue(`#selectFrameGroup`, "Margin"),
 		chromedp.WaitReady(`#addToFull`, chromedp.ByID),
@@ -30,14 +29,14 @@ func (w *worker) addMargin(browserCtx context.Context) error {
 	}
 
 	// Wait for the desired image element to load
-	log.Println("Waiting for margin image element...")
+	w.logger.Info("Waiting for margin image element...")
 	if err := chromedp.Run(browserCtx,
 		chromedp.WaitReady(`img[src="/img/frames/margins/blackBorderExtensionThumb.png"]`),
 	); err != nil {
 		return err
 	}
 
-	log.Println("Clicking 'addToFull' button...")
+	w.logger.Info("Clicking 'addToFull' button...")
 	if err := chromedp.Run(browserCtx,
 		chromedp.Click(`#addToFull`),
 	); err != nil {
@@ -48,12 +47,12 @@ func (w *worker) addMargin(browserCtx context.Context) error {
 	// Since the canvas cannot be directly compared, you can observe e.g. the size, an attribute or a hash of the image content.
 	// Here: Read a DataURL snapshot before the click and wait until it changes.
 
-	log.Println("Waiting for canvas to update after 'addToFull'...")
+	w.logger.Info("Waiting for canvas to update after 'addToFull'...")
 	var oldDataURL string
 	if err := chromedp.Run(browserCtx,
 		chromedp.Evaluate(`document.getElementById('previewCanvas')?.toDataURL()`, &oldDataURL),
 	); err != nil {
-		log.Printf("Could not read canvas DataURL: %v", err)
+		w.logger.Warnf("Could not read canvas DataURL: %v", err)
 		// not a fatal error, continue
 	}
 
@@ -69,15 +68,15 @@ func (w *worker) addMargin(browserCtx context.Context) error {
 			chromedp.Evaluate(`document.getElementById('previewCanvas')?.toDataURL()`, &newDataURL),
 		)
 		if err != nil {
-			log.Printf("Timeout or error while waiting for canvas update: %v", err)
+			w.logger.Warnf("Timeout or error while waiting for canvas update: %v", err)
 		} else {
-			log.Printf("Canvas updated.")
+			w.logger.Info("Canvas updated.")
 		}
 	} else {
-		log.Println("No canvas DataURL found, cannot wait for update.")
+		w.logger.Info("No canvas DataURL found, cannot wait for update.")
 	}
 
-	log.Println("Margin import finished")
+	w.logger.Info("Margin import finished")
 	return nil
 }
 
@@ -87,7 +86,7 @@ func (w *worker) replaceArtwork(card common.CardInfo, browserCtx context.Context
 	}
 
 	// Click on the artwork tab and wait for the file input to be visible
-	log.Println("Starting artwork import")
+	w.logger.Info("Starting artwork import")
 	inputSelector := `input[type="file"][accept*=".png"][data-dropfunction="uploadArt"]`
 	err := w.openTab(
 		browserCtx,
@@ -103,22 +102,22 @@ func (w *worker) replaceArtwork(card common.CardInfo, browserCtx context.Context
 	filepath := fmt.Sprintf("%s/%s", w.config.InputArtworkFolder, filename)
 	if _, err := os.Stat(filepath); err != nil {
 		if os.IsNotExist(err) {
-			log.Printf("Artwork file not found: %s", filepath)
+			w.logger.Infof("Artwork file not found: %s", filepath)
 			return nil
 		}
 
 		return err
 	}
 
-	log.Printf("Artwork file found: %s", filepath)
+	w.logger.Infof("Artwork file found: %s", filepath)
 	// Set the file path as value for the file input
 	if err := chromedp.Run(browserCtx,
 		chromedp.SetUploadFiles(inputSelector, []string{filepath}),
 	); err != nil {
-		log.Printf("Error setting artwork file: %v", err)
+		w.logger.Warnf("Error setting artwork file: %v", err)
 		return err
 	}
-	log.Printf("Artwork file %s set successfully.", filepath)
+	w.logger.Infof("Artwork file %s set successfully.", filepath)
 
 	return nil
 }
