@@ -90,7 +90,7 @@ func (w *worker) loadCard(cardData common.CardInfo, browserCtx context.Context) 
 	if err := chromedp.Run(browserCtx,
 		chromedp.WaitVisible(`#import-name`, chromedp.ByID),
 		chromedp.WaitReady(`#import-name`, chromedp.ByID),
-		chromedp.SetValue(`#import-name`, cardData.GetName(), chromedp.ByID),
+		chromedp.SetValue(`#import-name`, cardData.GetNameFront(), chromedp.ByID),
 		chromedp.Focus(`#import-name`, chromedp.ByID),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			return chromedp.SendKeys(`#import-name`, "\t", chromedp.ByID).Do(ctx)

@@ -12,6 +12,19 @@ import (
 	"time"
 )
 
+func (w *worker) checkIfCardAlreadyExistsInTargetFolder(card common.CardInfo) (bool, error) {
+	// Check if the card already exists in the target folder
+	targetPath := path.Join(w.config.OutputCardsFolder, fmt.Sprintf("%s_%s.png", w.config.ProjectName, card.GetSanitizedNameFront()))
+	if _, err := os.Stat(targetPath); err == nil {
+		w.logger.Infof("Card already exists: %s", targetPath)
+		return true, nil
+	} else if os.IsNotExist(err) {
+		return false, nil
+	} else {
+		return false, fmt.Errorf("error checking file existence: %v", err)
+	}
+}
+
 func (w *worker) saveCard(card common.CardInfo, browserCtx context.Context) error {
 	w.logger.Info("Saving card")
 
@@ -21,11 +34,11 @@ func (w *worker) saveCard(card common.CardInfo, browserCtx context.Context) erro
 	}
 
 	// Expected filename (always with straight apostrophe)
-	filename := fmt.Sprintf("%s.png", card.GetName())
+	filename := fmt.Sprintf("%s.png", card.GetNameFront())
 	downloadPath := path.Join(homeDir, "Downloads", filename)
 	altFilename := strings.ReplaceAll(filename, "'", "’")
 	altDownloadPath := path.Join(homeDir, "Downloads", altFilename)
-	targetPath := path.Join(w.config.OutputCardsFolder, fmt.Sprintf("%s_%s.png", w.config.ProjectName, card.GetSanitizedName()))
+	targetPath := path.Join(w.config.OutputCardsFolder, fmt.Sprintf("%s_%s.png", w.config.ProjectName, card.GetSanitizedNameFront()))
 
 	// Before download: Delete existing file in download folder if present (both variants)
 	if _, err := os.Stat(downloadPath); err == nil {

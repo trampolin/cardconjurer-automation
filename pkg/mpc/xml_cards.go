@@ -15,10 +15,10 @@ func (xc *XmlCards) AddCard(card common.CardInfo) {
 
 	for i := 0; i < card.GetCount(); i++ {
 		xc.Cards = append(xc.Cards, XmlCard{
-			ID:    card.GetSanitizedName(),
+			ID:    card.GetSanitizedNameFront(),
 			Slots: strconv.Itoa(len(xc.Cards)),
-			Name:  fmt.Sprintf("%s_%s.png", xc.projectName, card.GetSanitizedName()),
-			Query: card.GetName(),
+			Name:  fmt.Sprintf("%s_%s.png", xc.projectName, card.GetSanitizedNameFront()),
+			Query: card.GetNameFront(),
 		})
 	}
 }

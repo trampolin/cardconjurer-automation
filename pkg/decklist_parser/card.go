@@ -8,21 +8,23 @@ import (
 type Card struct {
 	Count           int
 	Name            string
+	NameFront       string
+	NameBack        string
 	Set             string
 	CollectorNumber string
 }
 
 func (c *Card) String() string {
-	return c.GetName()
+	return c.GetFullName()
 }
 
 func (c *Card) GetFullName() string {
 	return fmt.Sprintf("%s (%s #%s)", c.Name, strings.ToUpper(c.Set), c.CollectorNumber)
 }
 
-func (c *Card) GetSanitizedName() string {
+func (c *Card) getSanitizedName(name string) string {
 	// Everything in lowercase
-	name := strings.ToLower(c.Name)
+	name = strings.ToLower(name)
 	// Replace spaces with underscores
 	name = strings.ReplaceAll(name, " ", "_")
 	// Replace typographic apostrophe with straight apostrophe
@@ -37,12 +39,27 @@ func (c *Card) GetSanitizedName() string {
 	return sanitized.String()
 }
 
+func (c *Card) GetSanitizedNameFront() string {
+	return c.getSanitizedName(c.NameFront)
+}
+
+func (c *Card) GetSanitizedNameBack() string {
+	if c.NameBack == "" {
+		return ""
+	}
+	return c.getSanitizedName(c.NameBack)
+}
+
 func (c *Card) GetCount() int {
 	return c.Count
 }
 
-func (c *Card) GetName() string {
-	return c.Name
+func (c *Card) GetNameFront() string {
+	return c.NameFront
+}
+
+func (c *Card) GetNameBack() string {
+	return c.NameBack
 }
 
 func (c *Card) GetSet() string {

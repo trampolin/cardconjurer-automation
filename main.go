@@ -86,7 +86,7 @@ func main() {
 	}
 	for _, card := range decklist {
 		if filterSet != nil {
-			if _, ok := filterSet[card.GetName()]; !ok {
+			if _, ok := filterSet[card.GetNameFront()]; !ok {
 				continue
 			}
 		}

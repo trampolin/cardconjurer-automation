@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type DecklistParser struct {
@@ -51,9 +52,18 @@ func (c *DecklistParser) Parse() ([]common.CardInfo, error) {
 		set := record[2]
 		collectorNumber := record[3]
 
+		names := strings.Split(name, " // ")
+		nameFront := strings.TrimSpace(names[0])
+		nameBack := ""
+		if len(names) > 1 {
+			nameBack = strings.TrimSpace(names[1])
+		}
+
 		card := &Card{
 			Count:           count,
 			Name:            name,
+			NameFront:       nameFront,
+			NameBack:        nameBack,
 			Set:             set,
 			CollectorNumber: collectorNumber,
 		}

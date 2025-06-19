@@ -98,7 +98,7 @@ func (w *worker) replaceArtwork(card common.CardInfo, browserCtx context.Context
 	}
 
 	// Check if a matching PNG file exists in the artwork folder
-	filename := fmt.Sprintf("%s.png", card.GetName())
+	filename := fmt.Sprintf("%s.png", card.GetNameFront())
 	filepath := fmt.Sprintf("%s/%s", w.config.InputArtworkFolder, filename)
 	if _, err := os.Stat(filepath); err != nil {
 		if os.IsNotExist(err) {

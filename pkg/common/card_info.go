@@ -3,8 +3,10 @@ package common
 type CardInfo interface {
 	GetFullName() string
 	GetCount() int
-	GetName() string
-	GetSanitizedName() string
+	GetNameFront() string
+	GetNameBack() string
+	GetSanitizedNameFront() string
+	GetSanitizedNameBack() string
 	GetSet() string
 	GetCollectorNumber() string
 }
