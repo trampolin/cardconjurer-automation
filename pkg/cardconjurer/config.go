@@ -6,4 +6,5 @@ type Config struct {
 	InputArtworkFolder string
 	OutputCardsFolder  string
 	ProjectName        string
+	SkipExistingCards  bool
 }

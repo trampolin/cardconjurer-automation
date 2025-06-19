@@ -28,6 +28,7 @@ func main() {
 	input := flag.String("input", "", "Path to the artwork directory")
 	cardsFilter := flag.String("cards-filter", "", "Card filter (optional, comma separated)")
 	workers := flag.Int("workers", 2, "Number of workers")
+	skipExisting := flag.Bool("skip-existing", false, "Skip existing cards in the output directory")
 	flag.Parse()
 
 	if flag.NArg() < 1 {
@@ -102,6 +103,7 @@ func main() {
 		InputArtworkFolder: *input,
 		OutputCardsFolder:  *output,
 		ProjectName:        projectName,
+		SkipExistingCards:  *skipExisting,
 	}
 
 	cc, err := cardconjurer.New(ccCfg, sugar, cardList)

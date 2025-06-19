@@ -69,18 +69,20 @@ func (w *worker) handleCard(card common.CardInfo, browserCtx context.Context) er
 
 	w.logger.Info("Processing card")
 
-	exists, err := w.checkIfCardAlreadyExistsInTargetFolder(card)
-	if err != nil {
-		w.logger.Errorw("Error checking if card exists", "error", err)
-		return err
+	if w.config.SkipExistingCards {
+		exists, err := w.checkIfCardAlreadyExistsInTargetFolder(card)
+		if err != nil {
+			w.logger.Errorw("Error checking if card exists", "error", err)
+			return err
+		}
+
+		if exists {
+			w.logger.Info("Card already exists, skipping generation")
+			return nil
+		}
 	}
 
-	if exists {
-		w.logger.Info("Card already exists, skipping import")
-		return nil
-	}
-
-	err = w.importCard(card, browserCtx)
+	err := w.importCard(card, browserCtx)
 	if err != nil {
 		w.logger.Errorw("Error importing card", "error", err)
 		return err
