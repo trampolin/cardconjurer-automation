@@ -1,0 +1,12 @@
+<form [formGroup]="formGroup">
+  <mat-form-field>
+    <input
+      matInput
+      placeholder="link to decklist (moxfield or archidekt)"
+      formControlName="deckLink" required>
+
+      <mat-error>
+        Please enter a valid link to a decklist on Moxfield or Archidekt.
+      </mat-error>
+  </mat-form-field>
+</form>

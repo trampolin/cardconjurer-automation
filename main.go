@@ -62,7 +62,7 @@ func main() {
 		*output = filepath.Join(filepath.Dir(csvFile), "cards")
 	}
 
-	serve(sugar)
+	//serve(sugar)
 
 	if err := os.MkdirAll(*input, 0755); err != nil {
 		sugar.Fatalf("Could not create artwork folder: %v", err)

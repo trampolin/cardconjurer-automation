@@ -1,0 +1,17 @@
+<mat-horizontal-stepper labelPosition="bottom" #stepper>
+  <mat-step>
+    <ng-template matStepLabel>Import your decklist</ng-template>
+    <app-wizard-import-decklist-step />
+    <div>
+      <button mat-button matStepperNext>Next</button>
+    </div>
+  </mat-step>
+  <mat-step>
+    <ng-template matStepLabel>Done</ng-template>
+    You are now done.
+    <div>
+      <button mat-button matStepperPrevious>Back</button>
+      <button mat-button (click)="stepper.reset()">Reset</button>
+    </div>
+  </mat-step>
+</mat-horizontal-stepper>
